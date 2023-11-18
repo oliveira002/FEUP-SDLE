@@ -2,3 +2,4 @@
 .vscode/
 *.bkp
 /out
+/venv
