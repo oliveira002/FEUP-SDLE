@@ -13,9 +13,9 @@ class GCounter:
     -------
     inc():
         Increments the counter's value by 1.
-    query():
+    query() -> int:
         Returns the current value of the counter.
-    compare(gc2 : GCounter):
+    compare(gc2 : GCounter) -> bool:
         Compares the value of a given GCounter with the callers' value.
     merge(gc2 : GCounter):
         Merges the state of a given GCounter with the state of the caller by getting the max of both counter values.

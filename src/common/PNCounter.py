@@ -20,9 +20,9 @@ class PNCounter:
         Increments the pos counter's value by 1.
     dec():
         Increments the neg counter's value by 1.
-    query():
+    query() -> int:
         Returns the current value of the counter by subtracting neg from pos.
-    compare(pnc2 : PNCounter):
+    compare(pnc2 : PNCounter) -> bool:
         Compares the value of a given PNCounter with the callers' value.
     merge(pnc2 : PNCounter):
         Merges the state of a given PNCounter with the state of the caller by getting the max of both counter values.
