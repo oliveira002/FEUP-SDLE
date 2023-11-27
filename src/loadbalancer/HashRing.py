@@ -19,10 +19,13 @@ class HashRing:
         self.v_nodes = v_nodes
         self.num_replicas = num_replicas
         self.ring = SortedDict()
+        
+        
     def add_node(self, key):
         for i in range(self.v_nodes):
             hashed = hash_function(key + '-' + str(i))
             self.ring[hashed] = key
+            
         return
 
     def remove_node(self, key):
@@ -30,6 +33,7 @@ class HashRing:
             hashed = hash_function(key + '-' + str(i))
             del self.ring[hashed]
         return
+    
 
     def node_range(self,hashed_key,n):
         keys_before = list(islice(self.ring.irange(maximum=n, reverse=True), n))
