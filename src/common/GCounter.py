@@ -44,7 +44,7 @@ class GCounter:
         """
         Compares the value of a given GCounter with the callers' value.
         :param gc2 : GCounter:
-        :return :return True, if caller's value > given counter's value, False otherwise:
+        :return : True, if caller's value > given counter's value, False otherwise:
         """
         return self.value > gc2.value
 
