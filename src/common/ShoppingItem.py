@@ -31,7 +31,6 @@ class ShoppingListItem:
         Increases the timestamp of a given user by 1.
     """
 
-
     name: str = None
     counter: PNCounter = None
     timestampMap: dict = None
