@@ -1,6 +1,7 @@
-from uuid import *
-import zmq
 import json
+from uuid import *
+
+import zmq
 
 HOST = '127.0.0.1'
 PORT = 6666
@@ -27,16 +28,43 @@ class Client:
         self.socket.connect(f'tcp://{hostname}')
         print(f'Client connected to {hostname}')
 
-    def send_message(self, message):
+        self.send_message("Boas", "CONNECT")
+
+        while True:
+            self.receive_message()
+
+    def send_message(self, message, message_type):
         formatted_message = {
-            "uuid": str(self.uuid),
-            "message": message
+            "identity": 'Client-' + str(self.uuid),
+            "message": message,
+            "type": message_type
         }
         self.socket.send_json(formatted_message)
 
+
+    """
     def read_message(self):
         response = self.socket.recv()
         print("{}: {}".format(self.socket.identity.decode("ascii"), response.decode("ascii")))
+    """
+
+    def receive_message(self):
+        try:
+            # Check if there are any incoming messages
+            if self.socket.poll(timeout=1000, flags=zmq.POLLIN):
+                # Receive the message as a JSON-encoded string
+                message_json = self.socket.recv_string()
+
+                message = json.loads(message_json)
+
+                print("Received message:", message)
+                return message
+            else:
+                # print("No message received.")
+                return None
+        except zmq.error.ZMQError as e:
+            print("Error receiving message:", e)
+            return None
 
     def stop(self):
         self.socket.close()
@@ -46,9 +74,8 @@ class Client:
 def main():
     client = Client()
     client.start()
-    client.send_message("Boas")
     client.stop()
+
 
 if __name__ == "__main__":
     main()
-

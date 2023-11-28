@@ -20,6 +20,7 @@ class LoadBalancer:
         self.frontend_port = int(frontend_port)
         self.backend_port = int(backend_port)
         self.context = zmq.Context.instance()
+        self.workers = []
 
     def start(self):
         self.frontend = self.context.socket(zmq.ROUTER)
@@ -41,12 +42,29 @@ class LoadBalancer:
                 identity = identity.decode("utf-8")
                 message = json.loads(message.decode("utf-8"))
 
+                print(identity, message)
+
+                available_worker = self.workers.pop(0)
+                request = [available_worker.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
+                self.backend.send_multipart(request)
+
             if self.backend in sockets:
-                identity, _, message = self.frontend.recv_multipart()
+                identity, _, message = self.backend.recv_multipart()
                 identity = identity.decode("utf-8")
                 message = json.loads(message.decode("utf-8"))
 
-            print(identity, message)
+                if message['type'] == 'CONNECT':
+                    self.workers.append(identity)
+
+                else:
+                    request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
+                    self.frontend.send_multipart(request)
+
+                print(identity, message)
+
+
+
+            #self.handle_message(message)
 
     def stop(self):
         self.backend.close()
@@ -55,6 +73,11 @@ class LoadBalancer:
 
     def new_task(self, task, number):
         start_task(task, number)
+
+    def handle_message(self, message):
+        # maybe handling the different types of messages here
+        if message['type'] == "CONNECT":
+            print(2)
 
 
 def main():
