@@ -12,7 +12,7 @@ def hash_function(key):
 
 
 class HashRing:
-    def __int__(self, nodes=None, v_nodes=NUM_VNODES, hash_fn=hash_function, num_replicas=NUM_REPLICAS):
+    def __init__(self, nodes=None, v_nodes=NUM_VNODES, hash_fn=hash_function, num_replicas=NUM_REPLICAS):
         if nodes is None:
             self.nodes = []
 
