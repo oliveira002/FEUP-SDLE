@@ -47,9 +47,12 @@ class LoadBalancer:
 
                 print(identity, message)
 
-                available_worker = self.workers[0]
-                request = [available_worker.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
-                self.backend.send_multipart(request)
+
+                if message['type'] == "GET" or message['type'] == "POST":
+                    shopping_list = message['body']
+                    key, value = self.ring.get_server(shopping_list)
+                    request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
+                    self.backend.send_multipart(request)
 
             if self.backend in sockets:
                 request = self.backend.recv_multipart()
@@ -59,8 +62,8 @@ class LoadBalancer:
                 message = json.loads(message.decode("utf-8"))
 
                 if message['type'] == 'CONNECT':
-                    #self.ring.add_node(identity)
-                    self.workers.append(identity)
+                    self.ring.add_node(identity)
+                    #self.workers.append(identity)
 
                 else:
                     request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]

@@ -1,6 +1,7 @@
 from hashlib import sha256
 from sortedcollections import SortedDict
 from itertools import islice
+import bisect
 
 HASH_SPACE = 2 ** 32
 NUM_VNODES = 4
@@ -34,7 +35,15 @@ class HashRing:
             del self.ring[hashed]
         return
     
-
+    def get_server(self, list_id):
+        hashed = hash_function(list_id)
+        index = self.ring.bisect(hashed)
+        if index < len(self.ring):
+            next_key = self.ring.iloc[index]
+            next_value = self.ring[next_key]
+            return next_key, next_value
+        else:
+            return None, None
     def node_range(self, hashed_key, n):
         keys_before = list(islice(self.ring.irange(maximum=n, reverse=True), n))
         keys_after = list(islice(self.ring.irange(minimum=n), n))

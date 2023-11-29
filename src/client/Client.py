@@ -28,15 +28,15 @@ class Client:
         self.socket.connect(f'tcp://{hostname}')
         print(f'Client connected to {hostname}')
 
-        self.send_message("Boas", "CONNECT")
+        self.send_message("shopping_list_10", "GET")
 
         while True:
             self.receive_message()
 
-    def send_message(self, message, message_type):
+    def send_message(self, body, message_type):
         formatted_message = {
             "identity": str(self.uuid),
-            "message": message,
+            "body": body,
             "type": message_type
         }
         self.socket.send_json(formatted_message)
