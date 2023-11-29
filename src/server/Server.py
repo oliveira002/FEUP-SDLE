@@ -1,3 +1,5 @@
+import json
+
 import zmq
 
 HOST = '127.0.0.1'
@@ -29,7 +31,7 @@ class Server:
         while True:
             request = self.receive_message()
             if request is not None:
-                self.send_message_response(request['identity'], "CONFIRMATION")
+                self.send_message_response(request[0], "RESOURCE 1")
 
     def server_task(self):
         self.socket.send(b"READY")
@@ -41,15 +43,15 @@ class Server:
 
     def send_message(self, message, message_type):
         formatted_message = {
-            "identity": 'Server@' + str(self.hostname),
+            "identity": str(self.hostname),
             "message": message,
             "type": message_type
         }
         self.socket.send_json(formatted_message)
 
-    def send_message_response(self, uuid, message):
+    def send_message_response(self, client_identity, message):
         formatted_message = {
-            "identity": str(uuid),
+            "identity": client_identity.decode("utf-8"),
             "message": message,
             "type": "RESPONSE"
         }
@@ -60,10 +62,10 @@ class Server:
             # Check if there are any incoming messages
             if self.socket.poll(timeout=1000, flags=zmq.POLLIN):
                 # Receive the message as a JSON-encoded string
-                message = self.socket.recv_json()
+                identity, _, message = self.socket.recv_multipart()
 
-                print("Received message:", message)
-                return message
+                print(identity, message)
+                return identity, message
             else:
                 # print("No message received.")
                 return None

@@ -35,7 +35,7 @@ class Client:
 
     def send_message(self, message, message_type):
         formatted_message = {
-            "identity": 'Client-' + str(self.uuid),
+            "identity": str(self.uuid),
             "message": message,
             "type": message_type
         }

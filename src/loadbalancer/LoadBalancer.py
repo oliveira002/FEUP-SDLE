@@ -37,6 +37,7 @@ class LoadBalancer:
 
             identity = None
             message = None
+
             if self.frontend in sockets:
                 identity, _, message = self.frontend.recv_multipart()
                 identity = identity.decode("utf-8")
@@ -45,12 +46,14 @@ class LoadBalancer:
                 print(identity, message)
 
                 available_worker = self.workers.pop(0)
-                request = [available_worker.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
+                request = [available_worker.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
                 self.backend.send_multipart(request)
 
             if self.backend in sockets:
-                identity, _, message = self.backend.recv_multipart()
+                request = self.backend.recv_multipart()
+                identity, _, message = request
                 identity = identity.decode("utf-8")
+
                 message = json.loads(message.decode("utf-8"))
 
                 if message['type'] == 'CONNECT':
