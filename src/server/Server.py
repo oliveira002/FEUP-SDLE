@@ -45,18 +45,18 @@ class Server:
 
             self.socket.send_multipart([address, b"", b"OK"])
 
-    def send_message(self, message, message_type):
+    def send_message(self, body, message_type):
         formatted_message = {
             "identity": str(self.hostname),
-            "message": message,
+            "body": body,
             "type": message_type
         }
         self.socket.send_json(formatted_message)
 
-    def send_message_response(self, client_identity, message):
+    def send_message_response(self, client_identity, body):
         formatted_message = {
             "identity": client_identity.decode("utf-8"),
-            "message": message,
+            "body": body,
             "type": "RESPONSE"
         }
         self.socket.send_json(formatted_message)
