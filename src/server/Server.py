@@ -1,9 +1,11 @@
 import json
 
 import zmq
+import sys
 
 HOST = '127.0.0.1'
 PORT = 7777
+BROKER = '127.0.0.1:7777'
 
 
 class Server:
@@ -23,8 +25,8 @@ class Server:
         self.hostname = hostname
         self.socket = self.context.socket(zmq.REQ)
         self.socket.identity = u"Server@{}".format(hostname).encode("ascii")
-        self.socket.connect(f'tcp://{hostname}')
-        print(f'Server connected to {hostname}')
+        self.socket.connect(f'tcp://{BROKER}')
+        print(f'Server connected to {BROKER}')
 
         self.send_message("Initial Setup", "CONNECT")
 
@@ -79,7 +81,7 @@ class Server:
 
 
 def main():
-    server = Server()
+    server = Server(HOST, sys.argv[1])
     server.start()
     # server.send_message("Boas", "Connect")
     server.stop()
