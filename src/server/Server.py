@@ -1,4 +1,5 @@
 import json
+import time
 
 import zmq
 import sys
@@ -41,6 +42,7 @@ class Server:
         while True:
             address, empty, request = self.socket.recv_multipart()
             print("{}: {}".format(self.socket.identity.decode("ascii"), request.decode("ascii")))
+
             self.socket.send_multipart([address, b"", b"OK"])
 
     def send_message(self, message, message_type):
@@ -61,16 +63,11 @@ class Server:
 
     def receive_message(self):
         try:
-            # Check if there are any incoming messages
-            if self.socket.poll(timeout=1000, flags=zmq.POLLIN):
-                # Receive the message as a JSON-encoded string
-                identity, _, message = self.socket.recv_multipart()
+            # Receive the message as a JSON-encoded string
+            identity, _, message = self.socket.recv_multipart()
 
-                print(identity, message)
-                return identity, message
-            else:
-                # print("No message received.")
-                return None
+            print(identity, message)
+            return identity, message
         except zmq.error.ZMQError as e:
             print("Error receiving message:", e)
             return None
