@@ -3,3 +3,4 @@
 *.bkp
 /out
 /venv
+/node_modules
