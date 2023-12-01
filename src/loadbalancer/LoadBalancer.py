@@ -1,8 +1,26 @@
 import json
 import multiprocessing
 from HashRing import HashRing
-
 import zmq
+import os
+import logging
+
+script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
+logger = logging.getLogger(script_filename)
+logger.setLevel(logging.DEBUG)
+
+stream_h = logging.StreamHandler()
+file_h = logging.FileHandler('../logs.log')
+
+stream_h.setLevel(logging.DEBUG)
+file_h.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter(fmt='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', datefmt='%d/%m/%Y %H:%M:%S')
+stream_h.setFormatter(formatter)
+file_h.setFormatter(formatter)
+
+logger.addHandler(stream_h)
+logger.addHandler(file_h)
 
 HOST = '127.0.0.1'
 FRONTEND_PORT = 6666
@@ -27,8 +45,10 @@ class LoadBalancer:
     def start(self):
         self.frontend = self.context.socket(zmq.ROUTER)
         self.frontend.bind(f"tcp://{self.host}:{self.frontend_port}")
+        logger.info(f"Frontend listening on {self.host}:{self.frontend_port}")
         self.backend = self.context.socket(zmq.ROUTER)
         self.backend.bind(f"tcp://{self.host}:{self.backend_port}")
+        logger.info(f"Backend listening on {self.host}:{self.backend_port}")
 
         self.poller = zmq.Poller()
         self.poller.register(self.frontend, zmq.POLLIN)
@@ -44,9 +64,7 @@ class LoadBalancer:
                 identity, _, message = self.frontend.recv_multipart()
                 identity = identity.decode("utf-8")
                 message = json.loads(message.decode("utf-8"))
-
-                print(identity, message)
-
+                logger.info(f"Received message \"{message}\" from {identity}")
 
                 if message['type'] == "GET" or message['type'] == "POST":
                     shopping_list = message['body']
@@ -69,7 +87,7 @@ class LoadBalancer:
                     request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
                     self.frontend.send_multipart(request)
 
-                print(identity, message)
+                logger.info(f"Received message \"{message}\" from {identity}")
 
 
 
