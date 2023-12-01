@@ -14,18 +14,18 @@ def main():
         loadbalancer.start()
         loadbalancers.append(loadbalancer)
 
+    servers = []
+    for i in range(NBR_SERVERS):
+        server = Server()
+        server.start()
+        servers.append(server)
+    
     clients = []
     for i in range(NBR_CLIENTS):
         client = Client()
         client.start()
         client.send_message("boas")
         clients.append(client)
-
-    servers = []
-    for i in range(NBR_SERVERS):
-        server = Server()
-        server.start()
-        servers.append(server)
 
 
 if __name__ == "__main__":
