@@ -6,7 +6,7 @@ import sys
 
 HOST = '127.0.0.1'
 PORT = 7777
-BROKER = '127.0.0.1:7777'
+BROKER = HOST + ":" + str(PORT)
 
 
 class Server:
