@@ -2,8 +2,9 @@ from hashlib import sha256
 from sortedcollections import SortedDict
 from itertools import islice
 import bisect
+import sys
 
-HASH_SPACE = 2 ** 32
+HASH_SPACE = sys.maxsize
 NUM_VNODES = 4
 NUM_REPLICAS = 3
 
@@ -26,8 +27,6 @@ class HashRing:
         for i in range(self.v_nodes):
             hashed = hash_function(key + '-' + str(i))
             self.ring[hashed] = key
-            
-        return
 
     def remove_node(self, key):
         for i in range(self.v_nodes):
