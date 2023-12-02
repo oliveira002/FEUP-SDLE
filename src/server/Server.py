@@ -1,6 +1,5 @@
 import json
 import time
-
 import zmq
 import sys
 
@@ -27,7 +26,7 @@ class Server:
         self.socket = self.context.socket(zmq.REQ)
         self.socket.identity = u"Server@{}".format(hostname).encode("ascii")
         self.socket.connect(f'tcp://{BROKER}')
-        print(f'Server connected to {BROKER}')
+        print(f'Server connected to Broker at {BROKER}')
 
         self.send_message("Initial Setup", "CONNECT")
 

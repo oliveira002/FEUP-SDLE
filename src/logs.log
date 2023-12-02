@@ -1,0 +1,7 @@
+[01/12/2023 18:03:08] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[01/12/2023 18:03:08] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[01/12/2023 18:10:10] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[01/12/2023 18:10:10] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[01/12/2023 18:22:45] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[01/12/2023 18:22:45] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[01/12/2023 18:24:04] LoadBalancer.py - INFO: Received message "{'identity': '127.0.0.1:1111', 'body': 'Initial Setup', 'type': 'CONNECT'}" from Server@127.0.0.1:1111

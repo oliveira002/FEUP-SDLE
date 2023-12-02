@@ -1,7 +1,8 @@
 .idea/
 .vscode/
 *.bkp
-/out
+out
 /venv
-/node_modules
-/__pycache__
+node_modules
+__pycache__
+.expo

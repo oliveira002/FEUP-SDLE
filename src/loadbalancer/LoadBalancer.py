@@ -1,10 +1,10 @@
 import json
-import multiprocessing
 from HashRing import HashRing
 import zmq
 import os
 import logging
 
+# Logger setup
 script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
 logger = logging.getLogger(script_filename)
 logger.setLevel(logging.DEBUG)
@@ -22,15 +22,10 @@ file_h.setFormatter(formatter)
 logger.addHandler(stream_h)
 logger.addHandler(file_h)
 
+# Macros
 HOST = '127.0.0.1'
 FRONTEND_PORT = 6666
 BACKEND_PORT = 7777
-
-
-def start_task(task, *args):
-    process = multiprocessing.Process(target=task, args=args)
-    process.daemon = True
-    process.start()
 
 
 class LoadBalancer:
@@ -97,9 +92,6 @@ class LoadBalancer:
         self.backend.close()
         self.frontend.close()
         self.context.term()
-
-    def new_task(self, task, number):
-        start_task(task, number)
 
     def handle_message(self, message):
         # maybe handling the different types of messages here
