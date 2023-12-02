@@ -1,8 +1,27 @@
-import json
-import time
 import zmq
 import sys
+import os
+import logging
 
+# Logger setup
+script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
+logger = logging.getLogger(script_filename)
+logger.setLevel(logging.DEBUG)
+
+stream_h = logging.StreamHandler()
+file_h = logging.FileHandler('../logs.log')
+
+stream_h.setLevel(logging.DEBUG)
+file_h.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter(fmt='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', datefmt='%d/%m/%Y %H:%M:%S')
+stream_h.setFormatter(formatter)
+file_h.setFormatter(formatter)
+
+logger.addHandler(stream_h)
+logger.addHandler(file_h)
+
+# Macros
 HOST = '127.0.0.1'
 PORT = 7777
 BROKER = HOST + ":" + str(PORT)
@@ -26,7 +45,7 @@ class Server:
         self.socket = self.context.socket(zmq.REQ)
         self.socket.identity = u"Server@{}".format(hostname).encode("ascii")
         self.socket.connect(f'tcp://{BROKER}')
-        print(f'Server connected to Broker at {BROKER}')
+        logger.info(f'Server connected to Broker at {BROKER}')
 
         self.send_message("Initial Setup", "CONNECT")
 
@@ -40,7 +59,7 @@ class Server:
 
         while True:
             address, empty, request = self.socket.recv_multipart()
-            print("{}: {}".format(self.socket.identity.decode("ascii"), request.decode("ascii")))
+            logger.info("{}: {}".format(self.socket.identity.decode("ascii"), request.decode("ascii")))
 
             self.socket.send_multipart([address, b"", b"OK"])
 
@@ -65,10 +84,10 @@ class Server:
             # Receive the message as a JSON-encoded string
             identity, _, message = self.socket.recv_multipart()
 
-            print(identity, message)
+            logger.info(f"Received message \"{message}\" from {identity}")
             return identity, message
         except zmq.error.ZMQError as e:
-            print("Error receiving message:", e)
+            logger.error("Error receiving message:", e)
             return None
 
     def stop(self):
@@ -77,9 +96,8 @@ class Server:
 
 
 def main():
-    server = Server(HOST, sys.argv[1])
+    server = Server(HOST, int(sys.argv[1]))
     server.start()
-    # server.send_message("Boas", "Connect")
     server.stop()
 
 

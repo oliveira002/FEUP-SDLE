@@ -3,6 +3,8 @@ from HashRing import HashRing
 import zmq
 import os
 import logging
+from src.common.ServerMessageType import ServerMessageType
+from src.common.ClientMessageType import ClientMessageType
 
 # Logger setup
 script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
@@ -56,48 +58,45 @@ class LoadBalancer:
             message = None
 
             if self.frontend in sockets:
+
                 identity, _, message = self.frontend.recv_multipart()
                 identity = identity.decode("utf-8")
                 message = json.loads(message.decode("utf-8"))
                 logger.info(f"Received message \"{message}\" from {identity}")
 
-                if message['type'] == "GET" or message['type'] == "POST":
-                    shopping_list = message['body']
-                    key, value = self.ring.get_server(shopping_list)
-                    request = [self.workers[0].encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
-                    self.backend.send_multipart(request)
+                self.handle_client_message(identity, message)
 
             if self.backend in sockets:
-                request = self.backend.recv_multipart()
-                identity, _, message = request
+
+                identity, _, message = self.backend.recv_multipart()
                 identity = identity.decode("utf-8")
-
                 message = json.loads(message.decode("utf-8"))
-
-                if message['type'] == 'CONNECT':
-                    self.ring.add_node(identity)
-                    self.workers.append(identity)
-
-                else:
-                    request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
-                    self.frontend.send_multipart(request)
-
                 logger.info(f"Received message \"{message}\" from {identity}")
 
-
-
-            #self.handle_message(message)
+                self.handle_server_message(identity, message)
 
     def stop(self):
         self.backend.close()
         self.frontend.close()
         self.context.term()
 
-    def handle_message(self, message):
-        # maybe handling the different types of messages here
-        if message['type'] == "CONNECT":
-            print(2)
+    def handle_server_message(self, identity, message):
+        if message['type'] == ServerMessageType.CONNECT:
+            self.ring.add_node(identity)
+            self.workers.append(identity)
+        if message['type'] == ServerMessageType.REPLY:
+            request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
+            self.frontend.send_multipart(request)
+        if message['type'] == ServerMessageType.HEARTBEAT:
+            pass
 
+    def handle_client_message(self, identity, message):
+        if message['type'] == ClientMessageType.GET or message['type'] == ClientMessageType.POST:
+            shopping_list = message['body']
+            key, value = self.ring.get_server(shopping_list)
+            request = [self.workers[0].encode("utf-8"), b"", identity.encode("utf-8"), b"",
+                       json.dumps(message).encode("utf-8")]
+            self.backend.send_multipart(request)
 
 def main():
     loadbalancer = LoadBalancer()
