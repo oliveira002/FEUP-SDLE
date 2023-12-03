@@ -2,6 +2,8 @@ import zmq
 import sys
 import os
 import logging
+
+from src.common.ShoppingList import ShoppingList
 from src.common.ShoppingListItem import ShoppingListItem
 
 # Logger setup
@@ -99,8 +101,13 @@ class Server:
 def main():
     server = Server(HOST, int(sys.argv[1]))
 
-    sli = ShoppingListItem("1231-31-23123-12-33", "Bananas", 1)
-    print(sli)
+    sl = ShoppingList()
+    sl.inc_or_add_item("bananas", 1, "1231-31-23123-12-33")
+    sl.inc_or_add_item("bananas", 2, "1231-31-23123-12-33")
+    sl.inc_or_add_item("cebolas", 3, "1231-31-23123-12-33")
+    sl.dec_item("cebolas", 2, "1231-31-23123-12-33")
+
+    print(sl)
 
     server.start()
     server.stop()

@@ -82,8 +82,4 @@ class ShoppingListItem:
         self.timestampMap[userID] = timestamp + 1
 
     def __str__(self):
-        return f"{{\n" \
-               f"\tname: {self.name},\n" \
-               f"\tquantity: {self.counter.query()},\n" \
-               f"\ttimestamps: {json.dumps(self.timestampMap, indent=8)}\n" \
-               f"}}"
+        return f"{{quantity: {self.counter.query()},timestamps: {self.timestampMap}}}"
