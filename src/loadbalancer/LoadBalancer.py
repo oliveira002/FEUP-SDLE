@@ -92,7 +92,6 @@ class LoadBalancer:
         if message['type'] == "GET" or message['type'] == "POST":
             shopping_list = message['body']
             value = self.ring.get_server(shopping_list)
-            print(value)
             request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"",
                        json.dumps(message).encode("utf-8")]
             self.backend.send_multipart(request)

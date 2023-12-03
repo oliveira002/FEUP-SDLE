@@ -55,8 +55,13 @@ class Server:
 
         while True:
             request = self.receive_message()
-            if request is not None:
-                self.send_message_response(request[0], "RESOURCE 1")
+            if request is None:
+                continue
+
+            client_id, req = request[0], request[1]
+            if req['type'] == 'POST':
+                self.persist_shopping_list(req['body'])
+                self.send_message_response(client_id, "RESOURCE 1")
 
     def send_message(self, body, message_type):
         formatted_message = {
@@ -68,7 +73,7 @@ class Server:
 
     def send_message_response(self, client_identity, body):
         formatted_message = {
-            "identity": client_identity.decode("utf-8"),
+            "identity": client_identity,
             "body": body,
             "type": "REPLY"
         }
@@ -77,10 +82,14 @@ class Server:
     def receive_message(self):
         try:
             # Receive the message as a JSON-encoded string
-            identity, _, message = self.socket.recv_multipart()
-            message = json.loads(message)
-            logger.info(f"Received message \"{message}\" from {identity}")
-            return identity, message
+            if self.socket.poll(timeout=1000, flags=zmq.POLLIN):
+                identity, _, message = self.socket.recv_multipart()
+                message = json.loads(message)
+                identity = identity.decode("utf-8")
+                logger.info(f"Received message \"{message}\" from {identity}")
+                return [identity, message]
+            else:
+                return None
         except zmq.error.ZMQError as e:
             logger.error("Error receiving message:", e)
             return None
