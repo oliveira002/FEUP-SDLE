@@ -3,6 +3,8 @@ from uuid import *
 
 import zmq
 
+from src.common.ShoppingList import ShoppingList
+
 HOST = '127.0.0.1'
 PORT = 6666
 
@@ -28,7 +30,12 @@ class Client:
         self.socket.connect(f'tcp://{hostname}')
         print(f'Client connected to {hostname}')
 
-        self.send_message("shopping_list_10", "GET")
+        sl = ShoppingList()
+        sl.inc_or_add_item("bananas", 1, "1231-31-23123-12-33")
+        sl.inc_or_add_item("bananas", 2, "1231-31-23123-12-33")
+        sl.inc_or_add_item("cebolas", 3, "1231-31-23123-12-33")
+        sl.dec_item("cebolas", 2, "1231-31-23123-12-33")
+        self.send_message(str(sl), "POST")
 
         while True:
             self.receive_message()

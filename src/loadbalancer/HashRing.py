@@ -27,7 +27,6 @@ class HashRing:
         for i in range(self.v_nodes):
             hashed = hash_function(key + '-' + str(i))
             self.ring[hashed] = key
-            print(hashed)
 
     def remove_node(self, key):
         for i in range(self.v_nodes):

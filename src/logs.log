@@ -66,3 +66,40 @@
 [03/12/2023 15:09:04] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
 [03/12/2023 15:10:40] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
 [03/12/2023 15:11:07] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[03/12/2023 15:13:21] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[03/12/2023 15:13:21] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[03/12/2023 15:14:43] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[03/12/2023 15:14:43] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[03/12/2023 15:14:44] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[03/12/2023 15:14:44] LoadBalancer.py - INFO: Received message "{'identity': '127.0.0.1:8111', 'body': "{'bananas': {quantity: 3,timestamps: {'1231-31-23123-12-33': 2}}, 'cebolas': {quantity: 1,timestamps: {'1231-31-23123-12-33': 2}}}", 'type': 'CONNECT'}" from Server@127.0.0.1:8111
+[03/12/2023 15:15:54] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[03/12/2023 15:15:54] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[03/12/2023 15:15:55] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[03/12/2023 15:16:08] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[03/12/2023 15:17:18] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[03/12/2023 15:17:18] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[03/12/2023 15:17:20] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[03/12/2023 15:17:25] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[03/12/2023 15:17:25] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[03/12/2023 15:17:26] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[03/12/2023 15:17:26] LoadBalancer.py - INFO: Received message "{'identity': '127.0.0.1:8111', 'body': 'Initial Setup', 'type': 'CONNECT'}" from Server@127.0.0.1:8111
+[03/12/2023 15:17:36] LoadBalancer.py - INFO: Received message "{'identity': 'a0177e36-0286-4fd4-bdaf-9f415daadc37', 'body': "{'bananas': {quantity: 3,timestamps: {'1231-31-23123-12-33': 2}}, 'cebolas': {quantity: 1,timestamps: {'1231-31-23123-12-33': 2}}}", 'type': 'POST'}" from Client-a0177e36-0286-4fd4-bdaf-9f415daadc37
+[03/12/2023 15:18:31] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[03/12/2023 15:18:31] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[03/12/2023 15:18:33] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[03/12/2023 15:18:33] LoadBalancer.py - INFO: Received message "{'identity': '127.0.0.1:8111', 'body': 'Initial Setup', 'type': 'CONNECT'}" from Server@127.0.0.1:8111
+[03/12/2023 15:18:35] LoadBalancer.py - INFO: Received message "{'identity': '0a7d4a54-58c1-4c5a-9d42-509957a626d7', 'body': "{'bananas': {quantity: 3,timestamps: {'1231-31-23123-12-33': 2}}, 'cebolas': {quantity: 1,timestamps: {'1231-31-23123-12-33': 2}}}", 'type': 'POST'}" from Client-0a7d4a54-58c1-4c5a-9d42-509957a626d7
+[03/12/2023 15:18:55] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[03/12/2023 15:18:55] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[03/12/2023 15:18:56] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[03/12/2023 15:18:56] LoadBalancer.py - INFO: Received message "{'identity': '127.0.0.1:8111', 'body': 'Initial Setup', 'type': 'CONNECT'}" from Server@127.0.0.1:8111
+[03/12/2023 15:18:57] LoadBalancer.py - INFO: Received message "{'identity': 'e7936ef8-ef82-45fa-bd45-1d874c24392a', 'body': "{'bananas': {quantity: 3,timestamps: {'1231-31-23123-12-33': 2}}, 'cebolas': {quantity: 1,timestamps: {'1231-31-23123-12-33': 2}}}", 'type': 'POST'}" from Client-e7936ef8-ef82-45fa-bd45-1d874c24392a
+[03/12/2023 15:18:57] Server.py - INFO: Received message "b'{"identity": "e7936ef8-ef82-45fa-bd45-1d874c24392a", "body": "{\'bananas\': {quantity: 3,timestamps: {\'1231-31-23123-12-33\': 2}}, \'cebolas\': {quantity: 1,timestamps: {\'1231-31-23123-12-33\': 2}}}", "type": "POST"}'" from b'Client-e7936ef8-ef82-45fa-bd45-1d874c24392a'
+[03/12/2023 15:18:57] LoadBalancer.py - INFO: Received message "{'identity': 'Client-e7936ef8-ef82-45fa-bd45-1d874c24392a', 'body': 'RESOURCE 1', 'type': 'REPLY'}" from Server@127.0.0.1:8111
+[03/12/2023 15:19:56] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[03/12/2023 15:19:56] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[03/12/2023 15:19:57] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[03/12/2023 15:19:57] LoadBalancer.py - INFO: Received message "{'identity': '127.0.0.1:8111', 'body': 'Initial Setup', 'type': 'CONNECT'}" from Server@127.0.0.1:8111
+[03/12/2023 15:19:58] LoadBalancer.py - INFO: Received message "{'identity': '28278690-852b-4cb4-bbbe-6882c69d29a3', 'body': "{'bananas': {quantity: 3,timestamps: {'1231-31-23123-12-33': 2}}, 'cebolas': {quantity: 1,timestamps: {'1231-31-23123-12-33': 2}}}", 'type': 'POST'}" from Client-28278690-852b-4cb4-bbbe-6882c69d29a3
+[03/12/2023 15:19:58] Server.py - INFO: Received message "{'identity': '28278690-852b-4cb4-bbbe-6882c69d29a3', 'body': "{'bananas': {quantity: 3,timestamps: {'1231-31-23123-12-33': 2}}, 'cebolas': {quantity: 1,timestamps: {'1231-31-23123-12-33': 2}}}", 'type': 'POST'}" from b'Client-28278690-852b-4cb4-bbbe-6882c69d29a3'
+[03/12/2023 15:19:58] LoadBalancer.py - INFO: Received message "{'identity': 'Client-28278690-852b-4cb4-bbbe-6882c69d29a3', 'body': 'RESOURCE 1', 'type': 'REPLY'}" from Server@127.0.0.1:8111
