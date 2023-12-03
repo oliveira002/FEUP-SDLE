@@ -57,15 +57,6 @@ class Server:
             if request is not None:
                 self.send_message_response(request[0], "RESOURCE 1")
 
-    def server_task(self):
-        self.socket.send(b"READY")
-
-        while True:
-            address, empty, request = self.socket.recv_multipart()
-            logger.info("{}: {}".format(self.socket.identity.decode("ascii"), request.decode("ascii")))
-
-            self.socket.send_multipart([address, b"", b"OK"])
-
     def send_message(self, body, message_type):
         formatted_message = {
             "identity": str(self.hostname),
@@ -100,15 +91,6 @@ class Server:
 
 def main():
     server = Server(HOST, int(sys.argv[1]))
-
-    sl = ShoppingList()
-    sl.inc_or_add_item("bananas", 1, "1231-31-23123-12-33")
-    sl.inc_or_add_item("bananas", 2, "1231-31-23123-12-33")
-    sl.inc_or_add_item("cebolas", 3, "1231-31-23123-12-33")
-    sl.dec_item("cebolas", 2, "1231-31-23123-12-33")
-
-    print(sl)
-
     server.start()
     server.stop()
 
