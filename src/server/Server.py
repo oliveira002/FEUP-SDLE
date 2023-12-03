@@ -61,7 +61,7 @@ class Server:
                 request = self.receive_message()
                 client_id, req = request[0], request[1]
                 if req['type'] == 'POST':
-                    self.persist_to_json(req['body'])
+                    self.persist_to_json(json.loads(req['body']))
                     self.send_message_response(client_id, "RESOURCE 1")
 
                 if req['type'] == 'REPLICATE':
@@ -97,7 +97,6 @@ class Server:
 
     def persist_to_json(self, new_object):
         file_path = f"shoppinglists/{self.port}.json"
-
         try:
             # Load existing data from the file
             with open(file_path, 'r') as file:
