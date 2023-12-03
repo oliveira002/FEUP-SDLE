@@ -82,4 +82,5 @@ class ShoppingListItem:
         self.timestampMap[userID] = timestamp + 1
 
     def __str__(self):
-        return f"{{quantity: {self.counter.query()},timestamps: {self.timestampMap}}}"
+        timestamps_str = ','.join(f"\"{key}\": {value}" for key, value in self.timestampMap.items())
+        return f"{{\"quantity\": {self.counter.query()},\"timestamps\": {{{timestamps_str}}}}}"

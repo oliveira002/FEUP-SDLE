@@ -28,8 +28,8 @@ class ShoppingList:
             self.items[name] = item
 
     def __str__(self):
-        items_str = ', '.join(f"'{key}': {value}" for key, value in self.items.items())
-        return f"{{uuid: {self.uuid},items: {{{items_str}}}}}"
+        items_str = ','.join(f"\"{key}\": {value}" for key, value in self.items.items())
+        return f"{{\"uuid\": \"{self.uuid}\",\"items\": {{{items_str}}}}}"
 
 '''
 ShoppingList = {

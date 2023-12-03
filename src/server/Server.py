@@ -126,6 +126,12 @@ class Server:
 
 def main():
     server = Server(HOST, int(sys.argv[1]))
+    sl = ShoppingList()
+    sl.inc_or_add_item("bananas", 1, "1231-31-23123-12-33")
+    sl.inc_or_add_item("bananas", 2, "1231-31-23123-12-33")
+    sl.inc_or_add_item("cebolas", 3, "1231-31-23123-12-33")
+    sl.dec_item("cebolas", 2, "1231-31-23123-12-33")
+    print(sl)
     server.start()
     server.stop()
 
