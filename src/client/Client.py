@@ -28,6 +28,8 @@ class Client:
         self.socket = self.context.socket(zmq.REQ)
         self.socket.identity = u"Client-{}".format(str(self.uuid)).encode("ascii")
         self.socket.connect(f'tcp://{hostname}')
+        self.poller = zmq.Poller()
+        self.poller.register(self.socket, zmq.POLLIN)
         print(f'Client connected to {hostname}')
 
         sl = ShoppingList()
@@ -38,7 +40,9 @@ class Client:
         self.send_message(str(sl), "POST")
 
         while True:
-            self.receive_message()
+            socks = dict(self.poller.poll())
+            if self.socket in socks and socks[self.socket] == zmq.POLLIN:
+                self.receive_message()
 
     def send_message(self, body, message_type):
         formatted_message = {
@@ -57,18 +61,13 @@ class Client:
 
     def receive_message(self):
         try:
-            # Check if there are any incoming messages
-            if self.socket.poll(timeout=1000, flags=zmq.POLLIN):
-                # Receive the message as a JSON-encoded string
-                message_json = self.socket.recv_string()
+            # Receive the message as a JSON-encoded string
+            message_json = self.socket.recv_string()
 
-                message = json.loads(message_json)
+            message = json.loads(message_json)
 
-                print("Received message:", message)
-                return message
-            else:
-                # print("No message received.")
-                return None
+            print("Received message:", message)
+            return message
         except zmq.error.ZMQError as e:
             print("Error receiving message:", e)
             return None

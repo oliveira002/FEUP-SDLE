@@ -50,18 +50,19 @@ class Server:
         self.socket.identity = u"Server@{}".format(hostname).encode("ascii")
         self.socket.connect(f'tcp://{BROKER}')
         logger.info(f'Server connected to Broker at {BROKER}')
+        self.poller = zmq.Poller()
+        self.poller.register(self.socket, zmq.POLLIN)
 
         self.send_message("Initial Setup", "CONNECT")
 
         while True:
-            request = self.receive_message()
-            if request is None:
-                continue
-
-            client_id, req = request[0], request[1]
-            if req['type'] == 'POST':
-                self.persist_shopping_list(req['body'])
-                self.send_message_response(client_id, "RESOURCE 1")
+            socks = dict(self.poller.poll())
+            if self.socket in socks and socks[self.socket] == zmq.POLLIN:
+                request = self.receive_message()
+                client_id, req = request[0], request[1]
+                if req['type'] == 'POST':
+                    self.persist_to_json(req['body'])
+                    self.send_message_response(client_id, "RESOURCE 1")
 
     def send_message(self, body, message_type):
         formatted_message = {
@@ -81,39 +82,43 @@ class Server:
 
     def receive_message(self):
         try:
-            # Receive the message as a JSON-encoded string
-            if self.socket.poll(timeout=1000, flags=zmq.POLLIN):
-                identity, _, message = self.socket.recv_multipart()
-                message = json.loads(message)
-                identity = identity.decode("utf-8")
-                logger.info(f"Received message \"{message}\" from {identity}")
-                return [identity, message]
-            else:
-                return None
+            identity, _, message = self.socket.recv_multipart()
+            message = json.loads(message)
+            identity = identity.decode("utf-8")
+            logger.info(f"Received message \"{message}\" from {identity}")
+            return [identity, message]
+
         except zmq.error.ZMQError as e:
             logger.error("Error receiving message:", e)
             return None
 
-    def persist_shopping_list(self,json_object):
+    def persist_to_json(self,new_object):
         file_path = f"{self.hostname}.json"
 
-        # Check if the file exists
-        if os.path.exists(file_path):
-            # If the file exists, check if the JSON object already exists based on the 'uuid' field
-            existing_data = self.read_json_file(file_path)
-            existing_uuids = [item.get('uuid') for item in existing_data]
+        try:
+            # Load existing data from the file
+            with open(file_path, 'r') as file:
+                data = json.load(file)
+        except FileNotFoundError:
+            # If the file doesn't exist, create an empty dictionary
+            data = {"ShoppingLists": []}
 
-            if json_object.get('uuid') in existing_uuids:
-                # If the JSON object with the same 'uuid' exists, call the merge function
-                #merged_data = self.merge(existing_data, json_object)
-                self.write_json_file(file_path, json_object)
-            else:
-                # If the JSON object with the same 'uuid' does not exist, append to the file
-                existing_data.append(json_object)
-                self.write_json_file(file_path, existing_data)
+        # Check if the given JSON object exists in the list by uuid
+        existing_list = data.get("ShoppingLists", [])
+        uuid_to_check = new_object.get("uuid")
+
+        object_exists = any(obj.get("uuid") == uuid_to_check for obj in existing_list)
+
+        if object_exists:
+            # If the object exists, call the merge function
+            self.merge(new_object, new_object)
         else:
-            # If the file doesn't exist, create it and write the JSON object to it
-            self.write_json_file(file_path, [json_object])
+            # If the object doesn't exist, append to the ShoppingLists list
+            existing_list.append(new_object)
+
+        # Write the updated data back to the file with indentation
+        with open(file_path, 'w') as file:
+            json.dump(data, file, indent=2)
 
     def read_json_file(self, file_path):
         with open(file_path, 'r') as file:
@@ -121,8 +126,11 @@ class Server:
         return data
 
     def write_json_file(self, file_path, data):
+        json_data = json.loads(data)
         with open(file_path, 'w') as file:
-            json.dump(data, file, indent=2)
+            json_data = json.dumps(json_data, ensure_ascii=False)
+            file.write(json_data)
+            file.close()
 
     def merge(self, existing_data, new_data):
         return
@@ -135,12 +143,6 @@ class Server:
 
 def main():
     server = Server(HOST, int(sys.argv[1]))
-    sl = ShoppingList()
-    sl.inc_or_add_item("bananas", 1, "1231-31-23123-12-33")
-    sl.inc_or_add_item("bananas", 2, "1231-31-23123-12-33")
-    sl.inc_or_add_item("cebolas", 3, "1231-31-23123-12-33")
-    sl.dec_item("cebolas", 2, "1231-31-23123-12-33")
-    print(sl)
     server.start()
     server.stop()
 
