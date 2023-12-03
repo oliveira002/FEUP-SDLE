@@ -108,9 +108,10 @@ class LoadBalancer:
             self.backend.send_multipart(request_resource)
             #self.backend.send_multipart(request_replicate)
 
-    def parse_message(self, neighbours):
+    def parse_message(self, shopping_list, neighbours):
         formatted_message = {
-            "body": neighbours,
+            "body": shopping_list,
+            "destination": neighbours,
             "type": "REPLICATE"
         }
 

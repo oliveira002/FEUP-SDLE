@@ -84,6 +84,23 @@
           }
         }
       }
+    },
+    {
+      "uuid": "9800c310-b757-4d16-8afb-7eecdbb837c1",
+      "items": {
+        "bananas": {
+          "quantity": 3,
+          "timestamps": {
+            "1231-31-23123-12-33": 2
+          }
+        },
+        "cebolas": {
+          "quantity": 1,
+          "timestamps": {
+            "1231-31-23123-12-33": 2
+          }
+        }
+      }
     }
   ]
 }
