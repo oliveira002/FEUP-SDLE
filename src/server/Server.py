@@ -1,6 +1,7 @@
 import zmq
 import sys
 import os
+import json
 import logging
 
 from src.common.ShoppingList import ShoppingList
