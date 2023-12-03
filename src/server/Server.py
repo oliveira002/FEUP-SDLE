@@ -61,8 +61,11 @@ class Server:
                 request = self.receive_message()
                 client_id, req = request[0], request[1]
                 if req['type'] == 'POST':
-                    self.persist_to_json(req['body'])
+                    self.persist_to_json(json.loads(req['body']))
                     self.send_message_response(client_id, "RESOURCE 1")
+
+                if req['type'] == 'REPLICATE':
+                    print("oi")
 
     def send_message(self, body, message_type):
         formatted_message = {
@@ -92,8 +95,8 @@ class Server:
             logger.error("Error receiving message:", e)
             return None
 
-    def persist_to_json(self,new_object):
-        file_path = f"{self.hostname}.json"
+    def persist_to_json(self, new_object):
+        file_path = f"shoppinglists/{self.port}.json"
 
         try:
             # Load existing data from the file
@@ -120,21 +123,8 @@ class Server:
         with open(file_path, 'w') as file:
             json.dump(data, file, indent=2)
 
-    def read_json_file(self, file_path):
-        with open(file_path, 'r') as file:
-            data = json.load(file)
-        return data
-
-    def write_json_file(self, file_path, data):
-        json_data = json.loads(data)
-        with open(file_path, 'w') as file:
-            json_data = json.dumps(json_data, ensure_ascii=False)
-            file.write(json_data)
-            file.close()
-
     def merge(self, existing_data, new_data):
         return
-
 
     def stop(self):
         self.socket.close()

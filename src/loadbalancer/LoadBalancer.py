@@ -89,12 +89,33 @@ class LoadBalancer:
             pass
 
     def handle_client_message(self, identity, message):
-        if message['type'] == "GET" or message['type'] == "POST":
+        if message['type'] == "GET":
             shopping_list = message['body']
-            value = self.ring.get_server(shopping_list)
+            value, _ = self.ring.get_server(shopping_list)
             request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"",
                        json.dumps(message).encode("utf-8")]
             self.backend.send_multipart(request)
+
+        if message['type'] == "POST":
+            shopping_list = message['body']
+            value, neighbours = self.ring.get_server(shopping_list)
+            request_resource = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"",
+                       json.dumps(message).encode("utf-8")]
+
+            replicate_msg = self.parse_message(neighbours)
+            request_replicate = [value.encode("utf-8"), b"", b"", b"", json.dumps(replicate_msg).encode("utf-8")]
+
+            self.backend.send_multipart(request_resource)
+            #self.backend.send_multipart(request_replicate)
+
+    def parse_message(self, neighbours):
+        formatted_message = {
+            "body": neighbours,
+            "type": "REPLICATE"
+        }
+
+        return formatted_message
+
 
 
 def main():
