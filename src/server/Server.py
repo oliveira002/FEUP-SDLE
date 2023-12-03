@@ -61,7 +61,7 @@ class Server:
                 request = self.receive_message()
                 client_id, req = request[0], request[1]
                 if req['type'] == 'POST':
-                    self.persist_to_json(json.loads(req['body']))
+                    self.persist_to_json(req['body'])
                     self.send_message_response(client_id, "RESOURCE 1")
 
                 if req['type'] == 'REPLICATE':
