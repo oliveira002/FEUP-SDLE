@@ -1,5 +1,3 @@
-import json
-
 import zmq
 import sys
 import os
@@ -58,15 +56,6 @@ class Server:
             request = self.receive_message()
             if request is not None:
                 self.send_message_response(request[0], "RESOURCE 1")
-
-    def server_task(self):
-        self.socket.send(b"READY")
-
-        while True:
-            address, empty, request = self.socket.recv_multipart()
-            logger.info("{}: {}".format(self.socket.identity.decode("ascii"), request.decode("ascii")))
-
-            self.socket.send_multipart([address, b"", b"OK"])
 
     def send_message(self, body, message_type):
         formatted_message = {
@@ -136,9 +125,7 @@ class Server:
 
 def main():
     server = Server(HOST, int(sys.argv[1]))
-
     server.start()
-
     server.stop()
 
 
