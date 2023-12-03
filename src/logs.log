@@ -5,3 +5,56 @@
 [01/12/2023 18:22:45] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
 [01/12/2023 18:22:45] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
 [01/12/2023 18:24:04] LoadBalancer.py - INFO: Received message "{'identity': '127.0.0.1:1111', 'body': 'Initial Setup', 'type': 'CONNECT'}" from Server@127.0.0.1:1111
+[02/12/2023 17:06:48] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[02/12/2023 17:06:48] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[02/12/2023 17:06:48] LoadBalancer.py - INFO: Received message "{'identity': '127.0.0.1:1111', 'body': 'Initial Setup', 'type': 'CONNECT'}" from Server@127.0.0.1:1111
+[02/12/2023 17:06:57] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[02/12/2023 17:06:57] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[02/12/2023 17:07:29] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 17:07:29] LoadBalancer.py - INFO: Received message "{'identity': '127.0.0.1:1111', 'body': 'Initial Setup', 'type': 'CONNECT'}" from Server@127.0.0.1:1111
+[02/12/2023 17:07:36] LoadBalancer.py - INFO: Received message "{'identity': 'aa8874a8-aac5-48a6-b972-1c82e88121c2', 'body': 'shopping_list_10', 'type': 'GET'}" from Client-aa8874a8-aac5-48a6-b972-1c82e88121c2
+[02/12/2023 17:09:16] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[02/12/2023 17:09:16] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[02/12/2023 17:09:19] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[02/12/2023 17:09:19] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[02/12/2023 17:09:25] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[02/12/2023 17:09:25] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[02/12/2023 17:09:26] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 17:09:26] LoadBalancer.py - INFO: Received message "{'identity': '127.0.0.1:1111', 'body': 'Initial Setup', 'type': 'CONNECT'}" from Server@127.0.0.1:1111
+[02/12/2023 17:09:30] LoadBalancer.py - INFO: Received message "{'identity': 'fc2d719b-7f21-4fec-ad70-f7aea2b60689', 'body': 'shopping_list_10', 'type': 'GET'}" from Client-fc2d719b-7f21-4fec-ad70-f7aea2b60689
+[02/12/2023 17:10:09] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 17:10:09] LoadBalancer.py - INFO: Received message "{'identity': '127.0.0.1:1111', 'body': 'Initial Setup', 'type': 'CONNECT'}" from Server@127.0.0.1:1111
+[02/12/2023 17:10:28] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[02/12/2023 17:10:28] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[02/12/2023 17:10:29] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[02/12/2023 17:10:29] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[02/12/2023 17:10:31] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 17:10:31] LoadBalancer.py - INFO: Received message "{'identity': '127.0.0.1:1111', 'body': 'Initial Setup', 'type': 'CONNECT'}" from Server@127.0.0.1:1111
+[02/12/2023 17:11:06] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[02/12/2023 17:11:06] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[02/12/2023 17:11:07] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 17:11:07] LoadBalancer.py - INFO: Received message "{'identity': '127.0.0.1:1111', 'body': 'Initial Setup', 'type': 'CONNECT'}" from Server@127.0.0.1:1111
+[02/12/2023 17:11:11] LoadBalancer.py - INFO: Received message "{'identity': 'a4405797-ed1a-40a0-92e7-cd11938558ca', 'body': 'shopping_list_10', 'type': 'GET'}" from Client-a4405797-ed1a-40a0-92e7-cd11938558ca
+[02/12/2023 17:11:11] Server.py - INFO: Received message "b'{"identity": "a4405797-ed1a-40a0-92e7-cd11938558ca", "body": "shopping_list_10", "type": "GET"}'" from b'Client-a4405797-ed1a-40a0-92e7-cd11938558ca'
+[02/12/2023 17:11:11] LoadBalancer.py - INFO: Received message "{'identity': 'Client-a4405797-ed1a-40a0-92e7-cd11938558ca', 'body': 'RESOURCE 1', 'type': 'RESPONSE'}" from Server@127.0.0.1:1111
+[02/12/2023 17:12:50] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[02/12/2023 17:12:50] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[02/12/2023 17:12:56] LoadBalancer.py - INFO: Frontend listening on 127.0.0.1:6666
+[02/12/2023 17:12:56] LoadBalancer.py - INFO: Backend listening on 127.0.0.1:7777
+[02/12/2023 17:12:57] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 17:12:57] LoadBalancer.py - INFO: Received message "{'identity': '127.0.0.1:1111', 'body': 'Initial Setup', 'type': 'CONNECT'}" from Server@127.0.0.1:1111
+[02/12/2023 17:13:02] LoadBalancer.py - INFO: Received message "{'identity': '5fcc0c84-a8ea-44da-a9b3-5f3dbcb12aa0', 'body': 'shopping_list_10', 'type': 'GET'}" from Client-5fcc0c84-a8ea-44da-a9b3-5f3dbcb12aa0
+[02/12/2023 17:13:02] Server.py - INFO: Received message "b'{"identity": "5fcc0c84-a8ea-44da-a9b3-5f3dbcb12aa0", "body": "shopping_list_10", "type": "GET"}'" from b'Client-5fcc0c84-a8ea-44da-a9b3-5f3dbcb12aa0'
+[02/12/2023 17:13:02] LoadBalancer.py - INFO: Received message "{'identity': 'Client-5fcc0c84-a8ea-44da-a9b3-5f3dbcb12aa0', 'body': 'RESOURCE 1', 'type': 'REPLY'}" from Server@127.0.0.1:1111
+[02/12/2023 18:07:48] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 18:07:48] LoadBalancer.py - INFO: Received message "{'identity': '127.0.0.1:1111', 'body': 'Initial Setup', 'type': 'CONNECT'}" from Server@127.0.0.1:1111
+[02/12/2023 18:15:24] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 18:16:01] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 18:16:02] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 18:17:41] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 18:17:44] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 18:18:58] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 18:19:24] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 18:19:33] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 18:20:25] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777
+[02/12/2023 18:21:35] Server.py - INFO: Server connected to Broker at 127.0.0.1:7777

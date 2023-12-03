@@ -2,6 +2,7 @@ import zmq
 import sys
 import os
 import logging
+from src.common.ShoppingListItem import ShoppingListItem
 
 # Logger setup
 script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
@@ -75,7 +76,7 @@ class Server:
         formatted_message = {
             "identity": client_identity.decode("utf-8"),
             "body": body,
-            "type": "RESPONSE"
+            "type": "REPLY"
         }
         self.socket.send_json(formatted_message)
 
@@ -97,6 +98,10 @@ class Server:
 
 def main():
     server = Server(HOST, int(sys.argv[1]))
+
+    sli = ShoppingListItem("1231-31-23123-12-33", "Bananas", 1)
+    print(sli)
+
     server.start()
     server.stop()
 

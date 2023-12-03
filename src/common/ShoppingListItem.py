@@ -1,3 +1,5 @@
+import json
+
 from src.common.PNCounter import PNCounter
 
 
@@ -10,8 +12,6 @@ class ShoppingListItem:
 
     Attributes
     ----------
-    name : str
-        the name of the shopping list item
     counter : PNCounter
         PNCounter object to store the amount of an item
     timestampMap : dict
@@ -35,10 +35,11 @@ class ShoppingListItem:
     counter: PNCounter = None
     timestampMap: dict = None
 
-    def __int__(self, name: str, userID: str):
+    def __init__(self, userID: str, name: str, quantity: int = 0):
         self.name = name
         self.counter = PNCounter()
-        self.timestampMap = {userID: 0}
+        self.timestampMap = dict()
+        self.add(quantity, userID)
 
     def add(self, quantity: int, userID: str):
         """
@@ -64,13 +65,6 @@ class ShoppingListItem:
 
         self.increaseTimestamp(userID)
 
-    def getName(self):
-        """
-        Returns the name of the item.
-        :return The name of the item:
-        """
-        return self.name
-
     def getQuantity(self):
         """
         Returns the quantity of the item.
@@ -86,3 +80,10 @@ class ShoppingListItem:
         """
         timestamp = self.timestampMap.get(userID, 0)
         self.timestampMap[userID] = timestamp + 1
+
+    def __str__(self):
+        return f"{{\n" \
+               f"\tname: {self.name},\n" \
+               f"\tquantity: {self.counter.query()},\n" \
+               f"\ttimestamps: {json.dumps(self.timestampMap, indent=8)}\n" \
+               f"}}"

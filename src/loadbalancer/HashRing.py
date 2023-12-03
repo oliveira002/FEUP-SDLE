@@ -27,6 +27,7 @@ class HashRing:
         for i in range(self.v_nodes):
             hashed = hash_function(key + '-' + str(i))
             self.ring[hashed] = key
+            print(hashed)
 
     def remove_node(self, key):
         for i in range(self.v_nodes):
@@ -40,9 +41,9 @@ class HashRing:
         if index < len(self.ring):
             next_key = self.ring.iloc[index]
             next_value = self.ring[next_key]
-            return next_key, next_value
+            return next_value
         else:
-            return None, None
+            return None
     def node_range(self, hashed_key, n):
         keys_before = list(islice(self.ring.irange(maximum=n, reverse=True), n))
         keys_after = list(islice(self.ring.irange(minimum=n), n))

@@ -58,7 +58,6 @@ class LoadBalancer:
             message = None
 
             if self.frontend in sockets:
-
                 identity, _, message = self.frontend.recv_multipart()
                 identity = identity.decode("utf-8")
                 message = json.loads(message.decode("utf-8"))
@@ -67,7 +66,6 @@ class LoadBalancer:
                 self.handle_client_message(identity, message)
 
             if self.backend in sockets:
-
                 identity, _, message = self.backend.recv_multipart()
                 identity = identity.decode("utf-8")
                 message = json.loads(message.decode("utf-8"))
@@ -81,22 +79,24 @@ class LoadBalancer:
         self.context.term()
 
     def handle_server_message(self, identity, message):
-        if message['type'] == ServerMessageType.CONNECT:
+        if message['type'] == "CONNECT":
             self.ring.add_node(identity)
-            self.workers.append(identity)
-        if message['type'] == ServerMessageType.REPLY:
+            # self.workers.append(identity)
+        if message['type'] == "REPLY":
             request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
             self.frontend.send_multipart(request)
         if message['type'] == ServerMessageType.HEARTBEAT:
             pass
 
     def handle_client_message(self, identity, message):
-        if message['type'] == ClientMessageType.GET or message['type'] == ClientMessageType.POST:
+        if message['type'] == "GET" or message['type'] == ClientMessageType.POST:
             shopping_list = message['body']
-            key, value = self.ring.get_server(shopping_list)
-            request = [self.workers[0].encode("utf-8"), b"", identity.encode("utf-8"), b"",
+            value = self.ring.get_server(shopping_list)
+            print(value)
+            request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"",
                        json.dumps(message).encode("utf-8")]
             self.backend.send_multipart(request)
+
 
 def main():
     loadbalancer = LoadBalancer()
