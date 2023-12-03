@@ -89,7 +89,7 @@ class LoadBalancer:
             pass
 
     def handle_client_message(self, identity, message):
-        if message['type'] == "GET" or message['type'] == ClientMessageType.POST:
+        if message['type'] == "GET" or message['type'] == "POST":
             shopping_list = message['body']
             value = self.ring.get_server(shopping_list)
             print(value)

@@ -1,6 +1,7 @@
 import zmq
 import sys
 import os
+import json
 import logging
 
 from src.common.ShoppingList import ShoppingList
@@ -77,12 +78,46 @@ class Server:
         try:
             # Receive the message as a JSON-encoded string
             identity, _, message = self.socket.recv_multipart()
-
+            message = json.loads(message)
             logger.info(f"Received message \"{message}\" from {identity}")
             return identity, message
         except zmq.error.ZMQError as e:
             logger.error("Error receiving message:", e)
             return None
+
+    def persist_shopping_list(self,json_object):
+        file_path = f"{self.hostname}.json"
+
+        # Check if the file exists
+        if os.path.exists(file_path):
+            # If the file exists, check if the JSON object already exists based on the 'uuid' field
+            existing_data = self.read_json_file(file_path)
+            existing_uuids = [item.get('uuid') for item in existing_data]
+
+            if json_object.get('uuid') in existing_uuids:
+                # If the JSON object with the same 'uuid' exists, call the merge function
+                #merged_data = self.merge(existing_data, json_object)
+                self.write_json_file(file_path, json_object)
+            else:
+                # If the JSON object with the same 'uuid' does not exist, append to the file
+                existing_data.append(json_object)
+                self.write_json_file(file_path, existing_data)
+        else:
+            # If the file doesn't exist, create it and write the JSON object to it
+            self.write_json_file(file_path, [json_object])
+
+    def read_json_file(self, file_path):
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+        return data
+
+    def write_json_file(self, file_path, data):
+        with open(file_path, 'w') as file:
+            json.dump(data, file, indent=2)
+
+    def merge(self, existing_data, new_data):
+        return
+
 
     def stop(self):
         self.socket.close()
