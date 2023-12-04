@@ -66,7 +66,7 @@ class LoadBalancer:
                 self.handle_client_message(identity, message)
 
             if self.backend in sockets:
-                identity, _, message = self.backend.recv_multipart()
+                identity, message = self.backend.recv_multipart()
                 identity = identity.decode("utf-8")
                 message = json.loads(message.decode("utf-8"))
                 logger.info(f"Received message \"{message}\" from {identity}")

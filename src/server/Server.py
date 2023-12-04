@@ -46,7 +46,7 @@ class Server:
     def start(self):
         hostname = f"{self.host}:{self.port}"
         self.hostname = hostname
-        self.socket = self.context.socket(zmq.REQ)
+        self.socket = self.context.socket(zmq.DEALER)
         self.socket.identity = u"Server@{}".format(hostname).encode("ascii")
         self.socket.connect(f'tcp://{BROKER}')
         logger.info(f'Server connected to Broker at {BROKER}')
@@ -85,7 +85,7 @@ class Server:
 
     def receive_message(self):
         try:
-            identity, _, message = self.socket.recv_multipart()
+            _, identity, _, message = self.socket.recv_multipart()
             message = json.loads(message)
             identity = identity.decode("utf-8")
             logger.info(f"Received message \"{message}\" from {identity}")
