@@ -1,3 +1,4 @@
+import json
 from hashlib import sha256
 from sortedcollections import SortedDict
 from itertools import islice
@@ -14,12 +15,8 @@ def hash_function(key):
 
 
 class HashRing:
-    def __init__(self, nodes=None, v_nodes=NUM_VNODES, hash_fn=hash_function, num_replicas=NUM_REPLICAS):
-        if nodes is None:
-            self.nodes = []
-
-        self.node_neighbours = {}
-
+    def __init__(self, v_nodes=NUM_VNODES, hash_fn=hash_function, num_replicas=NUM_REPLICAS):
+        self.nodes = set()
         self.hash_function = hash_fn
         self.v_nodes = v_nodes
         self.num_replicas = num_replicas
@@ -27,6 +24,7 @@ class HashRing:
 
 
     def add_node(self, key):
+        self.nodes.add(key)
         for i in range(self.v_nodes):
             hashed = hash_function(key + '-' + str(i))
             self.ring[hashed] = key
@@ -38,9 +36,11 @@ class HashRing:
             del self.ring[hashed]
         return
     
-    def get_server(self, list_id, num_keys=NUM_REPLICAS):
-        hashed = hash_function(list_id)
+    def get_server(self, shopping_list, num_keys=NUM_REPLICAS):
+        shopping_list = json.loads(shopping_list)
+        list_id = shopping_list['uuid']
 
+        hashed = hash_function(list_id)
         keys = list(self.ring.keys())
         index = bisect.bisect_left(keys, hashed)
 
@@ -64,4 +64,21 @@ class HashRing:
         next_elements = keys[index + 1:index + 1 + n]
 
         return next_elements
+
+    def __str__(self):
+        serialized_data = {
+            "dic": self.ring,
+            "nodes": self.nodes
+        }
+        return json.dumps(serialized_data)
+
+    def get_routing_table(self):
+        serialized_data = {
+            "nodes": list(self.nodes),
+            "type": "RING"
+        }
+
+        return serialized_data
+
+
 

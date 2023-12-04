@@ -81,6 +81,9 @@ class LoadBalancer:
     def handle_server_message(self, identity, message):
         if message['type'] == "CONNECT":
             self.ring.add_node(identity)
+            cur_ring_msg = self.ring.get_routing_table()
+            request = [identity.encode("utf-8"), b"", b"", b"", json.dumps(cur_ring_msg).encode("utf-8")]
+            self.backend.send_multipart(request)
             # self.workers.append(identity)
         if message['type'] == "REPLY":
             request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
@@ -99,7 +102,6 @@ class LoadBalancer:
         if message['type'] == "POST":
             shopping_list = message['body']
             value, neighbours = self.ring.get_server(shopping_list)
-            message['neighbours'] = neighbours
             request_resource = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"",
                        json.dumps(message).encode("utf-8")]
 
@@ -108,17 +110,6 @@ class LoadBalancer:
 
             self.backend.send_multipart(request_resource)
             #self.backend.send_multipart(request_replicate)
-
-    def parse_message(self, shopping_list, neighbours):
-        formatted_message = {
-            "body": shopping_list,
-            "destination": neighbours,
-            "type": "REPLICATE"
-        }
-
-        return formatted_message
-
-
 
 def main():
     loadbalancer = LoadBalancer()

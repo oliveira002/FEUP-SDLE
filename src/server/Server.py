@@ -1,8 +1,11 @@
+import time
+
 import zmq
 import sys
 import os
 import json
 import logging
+from src.loadbalancer.HashRing import HashRing
 
 from src.common.ShoppingList import ShoppingList
 from src.common.ShoppingListItem import ShoppingListItem
@@ -38,6 +41,7 @@ class Server:
     socket: zmq.Context.socket = None
 
     def __init__(self, host=HOST, port=PORT):
+        self.ring = None
         self.hostname = None
         self.host = host
         self.port = int(port)
@@ -52,6 +56,7 @@ class Server:
         logger.info(f'Server connected to Broker at {BROKER}')
         self.poller = zmq.Poller()
         self.poller.register(self.socket, zmq.POLLIN)
+        self.ring = None
 
         self.send_message("Initial Setup", "CONNECT")
 
@@ -59,13 +64,29 @@ class Server:
             socks = dict(self.poller.poll())
             if self.socket in socks and socks[self.socket] == zmq.POLLIN:
                 request = self.receive_message()
-                client_id, req = request[0], request[1]
-                if req['type'] == 'POST':
-                    self.persist_to_json(json.loads(req['body']))
-                    self.send_message_response(client_id, "RESOURCE 1")
+                self.handle_request(request)
 
-                if req['type'] == 'REPLICATE':
-                    print("oi")
+
+
+    def handle_request(self, request):
+        client_id, req = request[0], request[1]
+
+        if req['type'] == 'RING':
+            nodes = list(req['nodes'])
+            self.ring = HashRing()
+            for server in nodes:
+                self.ring.add_node(server)
+
+        if req['type'] == 'POST':
+            shopping_list = req['body']
+            self.persist_to_json(json.loads(req['body']))
+            self.send_message_response(client_id, "RESOURCE 1")
+
+            _, neighbours = self.ring.get_server(shopping_list)
+
+
+
+
 
     def send_message(self, body, message_type):
         formatted_message = {
