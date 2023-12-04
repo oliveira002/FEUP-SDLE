@@ -24,12 +24,14 @@ class HashRing:
         self.v_nodes = v_nodes
         self.num_replicas = num_replicas
         self.ring = SortedDict()
+        self.num = 0
 
 
     def add_node(self, key):
         for i in range(self.v_nodes):
-            hashed = hash_function(key + '-' + str(i))
-            self.ring[hashed] = key
+            #hashed = hash_function(key + '-' + str(i))
+            self.ring[self.num] = key
+            self.num += 2
 
 
     def remove_node(self, key):
@@ -39,30 +41,33 @@ class HashRing:
         return
     
     def get_server(self, list_id, num_keys=NUM_REPLICAS):
-        hashed = hash_function(list_id)
+        #hashed = hash_function(list_id)
 
         keys = list(self.ring.keys())
-        index = bisect.bisect_left(keys, hashed) - 1
+        index = bisect.bisect_left(keys, list_id)
 
         if index >= len(self.ring):
-            index = -1
+            index = 0
 
         coordinator_key = keys[index]
         coordinator_identity = self.ring[coordinator_key]
         neighbours = self.node_range(coordinator_key)
 
         neighbours = [self.ring[x] for x in neighbours if self.ring[x] != coordinator_identity]
+        neighbours = list(set(neighbours))
 
         return coordinator_identity, neighbours
 
     def node_range(self, hashed_key, n=NUM_REPLICAS - 1):
         keys = list(self.ring.keys())
-        keys.extend(keys[:NUM_REPLICAS])
+        keys.extend(keys[:n])
 
         index = keys.index(hashed_key)
         next_elements = keys[index + 1:index + 1 + n]
 
-        return list(set(next_elements))
+        return next_elements
 
 
-
+ring = HashRing()
+ring.add_node(5)
+ring.get_server(3)

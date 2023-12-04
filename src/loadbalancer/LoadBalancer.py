@@ -99,11 +99,12 @@ class LoadBalancer:
         if message['type'] == "POST":
             shopping_list = message['body']
             value, neighbours = self.ring.get_server(shopping_list)
+            message['neighbours'] = neighbours
             request_resource = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"",
                        json.dumps(message).encode("utf-8")]
 
-            replicate_msg = self.parse_message(neighbours)
-            request_replicate = [value.encode("utf-8"), b"", b"", b"", json.dumps(replicate_msg).encode("utf-8")]
+            #replicate_msg = self.parse_message(shopping_list,neighbours)
+            #request_replicate = [value.encode("utf-8"), b"", b"", b"", json.dumps(replicate_msg).encode("utf-8")]
 
             self.backend.send_multipart(request_resource)
             #self.backend.send_multipart(request_replicate)
