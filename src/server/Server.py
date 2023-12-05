@@ -60,7 +60,7 @@ class Server:
         while True:
             sockets = dict(self.poller.poll(HEARTBEAT_INTERVAL * 1000))
 
-            if sockets.get(self.socket) == zmq.POLLIN:
+            if self.socket in sockets and sockets.get(self.socket) == zmq.POLLIN:
 
                 frames = self.socket.recv_multipart()
                 if not frames:
@@ -111,9 +111,6 @@ class Server:
             return None
 
     def handle_message(self, identity, message):
-        if not message:
-            return
-
         if message["type"] == ClientMsgType.GET:
             pass
         elif message["type"] == ClientMsgType.POST:
@@ -123,8 +120,6 @@ class Server:
             logger.info("Received load balancer heartbeat")
         else:
             logger.error("Invalid message received: \"%s\"", message)
-            self.loadbalLiveness = HEARTBEAT_LIVENESS
-            return
 
         self.loadbalLiveness = HEARTBEAT_LIVENESS
 

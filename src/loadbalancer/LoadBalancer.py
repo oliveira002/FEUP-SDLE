@@ -70,7 +70,7 @@ class LoadBalancer:
                 poller = self.server_poller
             sockets = dict(poller.poll(HEARTBEAT_INTERVAL * 1000))
 
-            if sockets.get(self.backend) == zmq.POLLIN:
+            if self.backend in sockets and sockets.get(self.backend) == zmq.POLLIN:
                 frames = self.backend.recv_multipart()
                 if not frames:
                     break
@@ -86,13 +86,13 @@ class LoadBalancer:
                         self.send_message(self.backend, server, "HEARTBEAT", LoadbalMsgType.HEARTBEAT)
                     heartbeat_at = time.time() + HEARTBEAT_INTERVAL
 
-            if sockets.get(self.frontend) == zmq.POLLIN:
+            if self.frontend in sockets and sockets.get(self.frontend) == zmq.POLLIN:
                 frames = self.frontend.recv_multipart()
                 if not frames:
                     break
 
                 identity = frames[0].decode("utf-8")
-                message = json.loads(frames[1:].decode("utf-8"))
+                message = json.loads(frames[1].decode("utf-8"))
                 logger.info(f"Received message \"{message}\" from {identity}")
 
                 self.handle_client_message(identity, message)
