@@ -3,26 +3,13 @@ from HashRing import HashRing
 import zmq
 import os
 import logging
-from src.common.ServerMessageType import ServerMessageType
-from src.common.ClientMessageType import ClientMessageType
+from src.common.ServerMsgType import ServerMsgType
+from src.common.ClientMsgType import ClientMsgType
+from src.common.utils import setup_logger
 
 # Logger setup
 script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
-logger = logging.getLogger(script_filename)
-logger.setLevel(logging.DEBUG)
-
-stream_h = logging.StreamHandler()
-file_h = logging.FileHandler('../logs.log')
-
-stream_h.setLevel(logging.DEBUG)
-file_h.setLevel(logging.DEBUG)
-
-formatter = logging.Formatter(fmt='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', datefmt='%d/%m/%Y %H:%M:%S')
-stream_h.setFormatter(formatter)
-file_h.setFormatter(formatter)
-
-logger.addHandler(stream_h)
-logger.addHandler(file_h)
+logger = setup_logger(script_filename)
 
 # Macros
 HOST = '127.0.0.1'
@@ -85,7 +72,7 @@ class LoadBalancer:
         if message['type'] == "REPLY":
             request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
             self.frontend.send_multipart(request)
-        if message['type'] == ServerMessageType.HEARTBEAT:
+        if message['type'] == ServerMsgType.HEARTBEAT:
             pass
 
     def handle_client_message(self, identity, message):

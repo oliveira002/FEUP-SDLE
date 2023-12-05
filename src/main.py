@@ -24,7 +24,6 @@ def main():
     for i in range(NBR_CLIENTS):
         client = Client()
         client.start()
-        client.send_message("boas")
         clients.append(client)
 
 

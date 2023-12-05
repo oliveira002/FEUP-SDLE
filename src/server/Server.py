@@ -1,87 +1,78 @@
+import time
 import zmq
 import sys
 import os
 import json
-import logging
+from uuid import *
+import hashlib
 
+from src.common.ClientMsgType import ClientMsgType
+from src.common.ServerMsgType import ServerMsgType
 from src.common.ShoppingList import ShoppingList
 from src.common.ShoppingListItem import ShoppingListItem
+from src.common.utils import setup_logger, format_msg
 
 # Logger setup
 script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
-logger = logging.getLogger(script_filename)
-logger.setLevel(logging.DEBUG)
-
-stream_h = logging.StreamHandler()
-file_h = logging.FileHandler('../logs.log')
-
-stream_h.setLevel(logging.DEBUG)
-file_h.setLevel(logging.DEBUG)
-
-formatter = logging.Formatter(fmt='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', datefmt='%d/%m/%Y %H:%M:%S')
-stream_h.setFormatter(formatter)
-file_h.setFormatter(formatter)
-
-logger.addHandler(stream_h)
-logger.addHandler(file_h)
+logger = setup_logger(script_filename)
 
 # Macros
-HOST = '127.0.0.1'
-PORT = 7777
-BROKER = HOST + ":" + str(PORT)
+BROKER_ENDPOINT_1 = '127.0.0.1:6666'
+BROKER_ENDPOINT_2 = '127.0.0.1:6667'
+HEARTBEAT_LIVENESS = 3
+HEARTBEAT_INTERVAL = 1
+INTERVAL_INIT = 1
+INTERVAL_MAX = 32
 
 
 class Server:
-    host: str = None
-    port: int = None
-    context: zmq.Context = None
-    socket: zmq.Context.socket = None
 
-    def __init__(self, host=HOST, port=PORT):
-        self.hostname = None
-        self.host = host
-        self.port = int(port)
+    def __init__(self):
+        self.socket = None
+        self.id = None
+        self.poller = None
+        self.generate_id()
         self.context = zmq.Context()
 
-    def start(self):
-        hostname = f"{self.host}:{self.port}"
-        self.hostname = hostname
+    def init_socket(self):
         self.socket = self.context.socket(zmq.DEALER)
-        self.socket.identity = u"Server@{}".format(hostname).encode("ascii")
-        self.socket.connect(f'tcp://{BROKER}')
-        logger.info(f'Server connected to Broker at {BROKER}')
+        self.socket.identity = u"Client-{}".format(str(self.id)).encode("ascii")
+
         self.poller = zmq.Poller()
         self.poller.register(self.socket, zmq.POLLIN)
 
-        self.send_message("Initial Setup", "CONNECT")
+        self.socket.connect(f'tcp://{BROKER_ENDPOINT_1}')
 
+    def kill_socket(self):
+        self.poller.unregister(self.socket)
+        self.socket.setsockopt(zmq.LINGER, 0)
+        self.socket.close()
+
+    def start(self):
+        self.init_socket()
+        logger.info(f"Connecting to broker at {BROKER_ENDPOINT_1}")
+
+        self.send_message(str(self.id), "Connecting", ServerMsgType.CONNECT)
+
+        heartbeat_at = time.time() + HEARTBEAT_INTERVAL
         while True:
-            socks = dict(self.poller.poll())
-            if self.socket in socks and socks[self.socket] == zmq.POLLIN:
-                request = self.receive_message()
-                client_id, req = request[0], request[1]
-                if req['type'] == 'POST':
-                    self.persist_to_json(json.loads(req['body']))
-                    self.send_message_response(client_id, "RESOURCE 1")
+            sockets = dict(self.poller.poll(HEARTBEAT_INTERVAL * 1000))
 
-                if req['type'] == 'REPLICATE':
-                    print("oi")
+            if self.socket in sockets and sockets.get(self.socket) == zmq.POLLIN:
 
-    def send_message(self, body, message_type):
-        formatted_message = {
-            "identity": str(self.hostname),
-            "body": body,
-            "type": message_type
-        }
+                identity, message = self.receive_message()
+                self.handle_message(message)
+
+
+    def generate_id(self):
+        unique_id = str(uuid4())
+        hashed_id = hashlib.md5(unique_id.encode()).hexdigest()
+        self.id = hashed_id[:8]
+
+    def send_message(self, identity, message, msg_type: ServerMsgType):
+        formatted_message = format_msg(identity, message, msg_type.value)
         self.socket.send_json(formatted_message)
-
-    def send_message_response(self, client_identity, body):
-        formatted_message = {
-            "identity": client_identity,
-            "body": body,
-            "type": "REPLY"
-        }
-        self.socket.send_json(formatted_message)
+        logger.info(f"Sent message \"{formatted_message}\"")
 
     def receive_message(self):
         try:
@@ -90,13 +81,26 @@ class Server:
             identity = identity.decode("utf-8")
             logger.info(f"Received message \"{message}\" from {identity}")
             return [identity, message]
-
         except zmq.error.ZMQError as e:
             logger.error("Error receiving message:", e)
             return None
 
+    def handle_message(self, message):
+        if not message:
+            return None
+
+        client_id, req = message[0], message[1]
+        if message["type"] == ClientMsgType.GET:
+            pass
+        elif message["type"] == ClientMsgType.POST:
+            self.persist_to_json(json.loads(req['body']))
+            self.send_message(client_id, "RESOURCE 1", ServerMsgType.REPLY)
+        else:
+            logger.error("Invalid message received: \"%s\"", message)
+            return None
+
     def persist_to_json(self, new_object):
-        file_path = f"shoppinglists/{self.port}.json"
+        file_path = f"shoppinglists/{self.id}.json"
         try:
             # Load existing data from the file
             with open(file_path, 'r') as file:
@@ -126,12 +130,12 @@ class Server:
         return
 
     def stop(self):
-        self.socket.close()
+        self.kill_socket()
         self.context.term()
 
 
 def main():
-    server = Server(HOST, int(sys.argv[1]))
+    server = Server()
     server.start()
     server.stop()
 

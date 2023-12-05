@@ -1,7 +1,8 @@
 from enum import Enum
 
 
-class ServerMessageType(Enum):
+class ServerMsgType(Enum):
     CONNECT = "CONNECT"
     REPLY = "REPLY"
     HEARTBEAT = "HEARTBEAT"
+    REPLICATE = "REPLICATE"
