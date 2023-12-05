@@ -92,7 +92,7 @@ class LoadBalancer:
                     break
 
                 identity = frames[0].decode("utf-8")
-                message = json.loads(frames[1].decode("utf-8"))
+                message = json.loads(frames[2].decode("utf-8"))
                 logger.info(f"Received message \"{message}\" from {identity}")
 
                 self.handle_client_message(identity, message)
@@ -126,9 +126,10 @@ class LoadBalancer:
 
     def send_message(self, socket, identity, message, msg_type: LoadbalMsgType):
         formatted_message = format_msg("Load Balancer", message, msg_type.value)
-        request = [identity.encode("utf-8"), b"", json.dumps(formatted_message).encode("utf-8")]
+        request = [identity.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(formatted_message).encode("utf-8")]
         socket.send_multipart(request)
         logger.info(f"Sent message \"{formatted_message}\"")
+
 
 def main():
     loadbalancer = LoadBalancer()

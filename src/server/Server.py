@@ -66,8 +66,8 @@ class Server:
                 if not frames:
                     break
 
-                identity = frames[0].decode("utf-8")
-                message = json.loads(frames[1].decode("utf-8"))
+                identity = frames[1].decode("utf-8")
+                message = json.loads(frames[3].decode("utf-8"))
                 logger.info(f"Received message \"{message}\" from {identity}")
 
                 self.handle_message(identity, message)
