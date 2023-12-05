@@ -36,11 +36,8 @@ class HashRing:
             del self.ring[hashed]
         return
     
-    def get_server(self, shopping_list, num_keys=NUM_REPLICAS):
-        shopping_list = json.loads(shopping_list)
-        list_id = shopping_list['uuid']
-
-        hashed = hash_function(list_id)
+    def get_server(self, shopping_list_id, num_keys=NUM_REPLICAS):
+        hashed = hash_function(shopping_list_id)
         keys = list(self.ring.keys())
         index = bisect.bisect_left(keys, hashed)
 

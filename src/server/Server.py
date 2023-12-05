@@ -88,12 +88,20 @@ class Server:
             for server in nodes:
                 self.ring.add_node(server)
 
-        if req['type'] == 'POST':
-            shopping_list = req['body']
-            merged = self.persist_to_json(json.loads(req['body']))
-            self.send_message(self.socket, merged, "REPLY", client_id)
+        if req['type'] == 'GET':
+            shopping_list_id = req['body']
 
-            _, neighbours = self.ring.get_server(shopping_list)
+            # need to check the json and merge (?) quorum
+            self.send_message(self.socket, "Quase", "REPLY", client_id)
+
+        if req['type'] == 'POST':
+            shopping_list = json.loads(req['body'])
+
+            merged = self.persist_to_json(shopping_list)
+
+            self.send_message(self.socket, "Modified Shopping List Correctly", "REPLY", client_id)
+
+            _, neighbours = self.ring.get_server(shopping_list['uuid'])
 
             self.replicate_data(neighbours, merged)
 
@@ -177,18 +185,7 @@ class Server:
 
         # Check if the given JSON object exists in the list by uuid
         existing_list = data.get("ShoppingLists", [])
-        uuid_to_check = new_object.get("uuid")
-
-        object_exists = any(obj.get("uuid") == uuid_to_check for obj in existing_list)
-
-        if object_exists:
-            for i, obj in enumerate(existing_list):
-                if obj.get("uuid") == uuid_to_check:
-                    new_object = self.merge(obj, new_object)
-                    existing_list[i] = new_object
-        else:
-            # If the object doesn't exist, append to the ShoppingLists list
-            existing_list.append(new_object)
+        existing_list.append(new_object)
 
         # Write the updated data back to the file with indentation
         with open(file_path, 'w') as file:

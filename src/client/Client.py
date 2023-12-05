@@ -37,7 +37,9 @@ class Client:
         sl.inc_or_add_item("bananas", 2, "1231-31-23123-12-33")
         sl.inc_or_add_item("cebolas", 3, "1231-31-23123-12-33")
         sl.dec_item("cebolas", 2, "1231-31-23123-12-33")
-        self.send_message(str(sl), "POST")
+        #self.send_message(str(sl), "POST")
+
+        self.send_message("9982236c-9d22-47dd-b697-e039df0e7e44", "GET")
 
         while True:
             socks = dict(self.poller.poll())
