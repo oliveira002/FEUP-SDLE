@@ -1,11 +1,15 @@
 import json
+import time
+
 from HashRing import HashRing
 import zmq
 import os
 import logging
+
+from src.common.LoadbalMsgType import LoadbalMsgType
 from src.common.ServerMsgType import ServerMsgType
 from src.common.ClientMsgType import ClientMsgType
-from src.common.utils import setup_logger
+from src.common.utils import setup_logger, format_msg
 
 # Logger setup
 script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
@@ -14,11 +18,14 @@ logger = setup_logger(script_filename)
 # Macros
 FRONTEND_ENDPOINT = '127.0.0.1:6666'
 BACKEND_ENDPOINT = '127.0.0.1:7777'
+HEARTBEAT_LIVENESS = 3
+HEARTBEAT_INTERVAL = 1.0
 
 
 class LoadBalancer:
     def __init__(self):
-        self.poller = None
+        self.server_poller = None
+        self.both_poller = None
         self.backend = None
         self.frontend = None
         self.context = zmq.Context.instance()
@@ -28,94 +35,100 @@ class LoadBalancer:
     def init_sockets(self):
         self.frontend = self.context.socket(zmq.ROUTER)
         self.frontend.bind(f"tcp://{FRONTEND_ENDPOINT}")
-        logger.info(f"Frontend listening on {FRONTEND_ENDPOINT}")
 
         self.backend = self.context.socket(zmq.ROUTER)
         self.backend.bind(f"tcp://{BACKEND_ENDPOINT}")
-        logger.info(f"Backend listening on {BACKEND_ENDPOINT}")
 
-        self.poller = zmq.Poller()
-        self.poller.register(self.frontend, zmq.POLLIN)
-        self.poller.register(self.backend, zmq.POLLIN)
+        self.server_poller = zmq.Poller()
+        self.server_poller.register(self.backend, zmq.POLLIN)
+
+        self.both_poller = zmq.Poller()
+        self.both_poller.register(self.frontend, zmq.POLLIN)
+        self.both_poller.register(self.backend, zmq.POLLIN)
 
     def kill_sockets(self):
-        self.poller.unregister(self.frontend)
-        self.poller.unregister(self.backend)
+        self.both_poller.unregister(self.frontend)
+        self.both_poller.unregister(self.backend)
+        self.server_poller.unregister(self.backend)
+
         self.frontend.setsockopt(zmq.LINGER, 0)
         self.backend.setsockopt(zmq.LINGER, 0)
+
         self.frontend.close()
         self.backend.close()
 
     def start(self):
+        self.init_sockets()
+        logger.info(f"Frontend listening on {FRONTEND_ENDPOINT}")
+        logger.info(f"Backend listening on {BACKEND_ENDPOINT}")
 
+        heartbeat_at = time.time() + HEARTBEAT_INTERVAL
         while True:
-            sockets = dict(self.poller.poll())
+            if len(self.ring.nodes) > 0:
+                poller = self.both_poller
+            else:
+                poller = self.server_poller
+            sockets = dict(poller.poll(HEARTBEAT_INTERVAL * 1000))
 
-            identity = None
-            message = None
+            if sockets.get(self.backend) == zmq.POLLIN:
+                frames = self.backend.recv_multipart()
+                if not frames:
+                    break
 
-            if self.frontend in sockets:
-                identity, _, message = self.frontend.recv_multipart()
-                identity = identity.decode("utf-8")
-                message = json.loads(message.decode("utf-8"))
-                logger.info(f"Received message \"{message}\" from {identity}")
-
-                self.handle_client_message(identity, message)
-
-            if self.backend in sockets:
-                identity, message = self.backend.recv_multipart()
-                identity = identity.decode("utf-8")
-                message = json.loads(message.decode("utf-8"))
+                identity = frames[0].decode("utf-8")
+                message = json.loads(frames[1].decode("utf-8"))
                 logger.info(f"Received message \"{message}\" from {identity}")
 
                 self.handle_server_message(identity, message)
 
+                if time.time() >= heartbeat_at:
+                    for server in self.ring.nodes:
+                        self.send_message(self.backend, server, "HEARTBEAT", LoadbalMsgType.HEARTBEAT)
+                    heartbeat_at = time.time() + HEARTBEAT_INTERVAL
+
+            if sockets.get(self.frontend) == zmq.POLLIN:
+                frames = self.frontend.recv_multipart()
+                if not frames:
+                    break
+
+                identity = frames[0].decode("utf-8")
+                message = json.loads(frames[1:].decode("utf-8"))
+                logger.info(f"Received message \"{message}\" from {identity}")
+
+                self.handle_client_message(identity, message)
+
+            # self.ring.nodes.purge()
+
     def stop(self):
-        self.backend.close()
-        self.frontend.close()
+        self.kill_sockets()
         self.context.term()
 
     def handle_server_message(self, identity, message):
         if message['type'] == "CONNECT":
-            self.ring.add_node(identity)
-            # self.workers.append(identity)
-        if message['type'] == "REPLY":
+            pass
+        elif message['type'] == ServerMsgType.REPLY:
             request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
             self.frontend.send_multipart(request)
-        if message['type'] == ServerMsgType.HEARTBEAT:
+        elif message['type'] == ServerMsgType.HEARTBEAT:
             pass
 
+        self.ring.add_node(identity)
+
     def handle_client_message(self, identity, message):
-        if message['type'] == "GET":
-            shopping_list = message['body']
-            value, _ = self.ring.get_server(shopping_list)
-            request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"",
-                       json.dumps(message).encode("utf-8")]
-            self.backend.send_multipart(request)
+        shopping_list = message['body']
+        value, neighbours = self.ring.get_server(shopping_list)
 
-        if message['type'] == "POST":
-            shopping_list = message['body']
-            value, neighbours = self.ring.get_server(shopping_list)
+        if message['type'] == ClientMsgType.POST:
             message['neighbours'] = neighbours
-            request_resource = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"",
-                       json.dumps(message).encode("utf-8")]
 
-            #replicate_msg = self.parse_message(shopping_list,neighbours)
-            #request_replicate = [value.encode("utf-8"), b"", b"", b"", json.dumps(replicate_msg).encode("utf-8")]
+        request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
+        self.backend.send_multipart(request)
 
-            self.backend.send_multipart(request_resource)
-            #self.backend.send_multipart(request_replicate)
-
-    def parse_message(self, shopping_list, neighbours):
-        formatted_message = {
-            "body": shopping_list,
-            "destination": neighbours,
-            "type": "REPLICATE"
-        }
-
-        return formatted_message
-
-
+    def send_message(self, socket, identity, message, msg_type: LoadbalMsgType):
+        formatted_message = format_msg("Load Balancer", message, msg_type.value)
+        request = [identity.encode("utf-8"), b"", json.dumps(formatted_message).encode("utf-8")]
+        socket.send_multipart(request)
+        logger.info(f"Sent message \"{formatted_message}\"")
 
 def main():
     loadbalancer = LoadBalancer()

@@ -1,6 +1,6 @@
 from enum import Enum
 
 
-class ClientMsgType(Enum):
+class ClientMsgType(str, Enum):
     POST = "POST"
     GET = "GET"

@@ -1,6 +1,5 @@
 import time
 import zmq
-import sys
 import os
 import json
 from uuid import *
@@ -18,8 +17,8 @@ script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
 logger = setup_logger(script_filename)
 
 # Macros
-BROKER_ENDPOINT_1 = '127.0.0.1:6666'
-BROKER_ENDPOINT_2 = '127.0.0.1:6667'
+BROKER_ENDPOINT_1 = '127.0.0.1:7777'
+BROKER_ENDPOINT_2 = '127.0.0.1:7778'
 HEARTBEAT_LIVENESS = 3
 HEARTBEAT_INTERVAL = 1
 INTERVAL_INIT = 1
@@ -38,7 +37,7 @@ class Server:
 
     def init_socket(self):
         self.socket = self.context.socket(zmq.DEALER)
-        self.socket.identity = u"Client-{}".format(str(self.id)).encode("ascii")
+        self.socket.identity = u"Server-{}".format(str(self.id)).encode("ascii")
 
         self.poller = zmq.Poller()
         self.poller.register(self.socket, zmq.POLLIN)
@@ -61,9 +60,17 @@ class Server:
         while True:
             sockets = dict(self.poller.poll(HEARTBEAT_INTERVAL * 1000))
 
-            if self.socket in sockets and sockets.get(self.socket) == zmq.POLLIN:
-                identity, message = self.receive_message()
-                self.handle_message(message)
+            if sockets.get(self.socket) == zmq.POLLIN:
+
+                frames = self.socket.recv_multipart()
+                if not frames:
+                    break
+
+                identity = frames[0].decode("utf-8")
+                message = json.loads(frames[1].decode("utf-8"))
+                logger.info(f"Received message \"{message}\" from {identity}")
+
+                self.handle_message(identity, message)
                 interval = INTERVAL_INIT
             else:
                 self.loadbalLiveness -= 1
@@ -103,22 +110,21 @@ class Server:
             logger.error("Error receiving message:", e)
             return None
 
-    def handle_message(self, message):
+    def handle_message(self, identity, message):
         if not message:
-            return None
+            return
 
-        client_id, req = message[0], message[1]
         if message["type"] == ClientMsgType.GET:
             pass
         elif message["type"] == ClientMsgType.POST:
-            self.persist_to_json(json.loads(req['body']))
-            self.send_message(client_id, "RESOURCE 1", ServerMsgType.REPLY)
+            self.persist_to_json(json.loads(message['body']))
+            self.send_message(identity, "RESOURCE 1", ServerMsgType.REPLY)
         elif message["type"] == LoadbalMsgType.HEARTBEAT:
             logger.info("Received load balancer heartbeat")
         else:
             logger.error("Invalid message received: \"%s\"", message)
             self.loadbalLiveness = HEARTBEAT_LIVENESS
-            return None
+            return
 
         self.loadbalLiveness = HEARTBEAT_LIVENESS
 

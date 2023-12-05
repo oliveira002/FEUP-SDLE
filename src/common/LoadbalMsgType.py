@@ -1,5 +1,5 @@
 from enum import Enum
 
 
-class LoadbalMsgType(Enum):
+class LoadbalMsgType(str, Enum):
     HEARTBEAT = "HEARTBEAT"
