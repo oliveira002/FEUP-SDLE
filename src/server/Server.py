@@ -7,6 +7,7 @@ from uuid import *
 import hashlib
 
 from src.common.ClientMsgType import ClientMsgType
+from src.common.LoadbalMsgType import LoadbalMsgType
 from src.common.ServerMsgType import ServerMsgType
 from src.common.ShoppingList import ShoppingList
 from src.common.ShoppingListItem import ShoppingListItem
@@ -28,6 +29,7 @@ INTERVAL_MAX = 32
 class Server:
 
     def __init__(self):
+        self.loadbalLiveness = HEARTBEAT_LIVENESS
         self.socket = None
         self.id = None
         self.poller = None
@@ -54,15 +56,31 @@ class Server:
 
         self.send_message(str(self.id), "Connecting", ServerMsgType.CONNECT)
 
+        interval = INTERVAL_INIT
         heartbeat_at = time.time() + HEARTBEAT_INTERVAL
         while True:
             sockets = dict(self.poller.poll(HEARTBEAT_INTERVAL * 1000))
 
             if self.socket in sockets and sockets.get(self.socket) == zmq.POLLIN:
-
                 identity, message = self.receive_message()
                 self.handle_message(message)
+                interval = INTERVAL_INIT
+            else:
+                self.loadbalLiveness -= 1
+                if self.loadbalLiveness == 0:
+                    logger.warning("Heartbeat failure, can't reach load balancer")
+                    logger.warning("Reconnecting in %0.2fs..." % interval)
+                    time.sleep(interval)
 
+                    if interval < INTERVAL_MAX:
+                        interval *= 2
+                    self.kill_socket()
+                    self.init_socket()
+                    self.loadbalLiveness = HEARTBEAT_LIVENESS
+            if time.time() > heartbeat_at:
+                heartbeat_at = time.time() + HEARTBEAT_INTERVAL
+                logger.info("Sent heartbeat to load balancer")
+                self.send_message(str(self.id), "HEARTBEAT", ServerMsgType.HEARTBEAT)
 
     def generate_id(self):
         unique_id = str(uuid4())
@@ -95,9 +113,14 @@ class Server:
         elif message["type"] == ClientMsgType.POST:
             self.persist_to_json(json.loads(req['body']))
             self.send_message(client_id, "RESOURCE 1", ServerMsgType.REPLY)
+        elif message["type"] == LoadbalMsgType.HEARTBEAT:
+            logger.info("Received load balancer heartbeat")
         else:
             logger.error("Invalid message received: \"%s\"", message)
+            self.loadbalLiveness = HEARTBEAT_LIVENESS
             return None
+
+        self.loadbalLiveness = HEARTBEAT_LIVENESS
 
     def persist_to_json(self, new_object):
         file_path = f"shoppinglists/{self.id}.json"

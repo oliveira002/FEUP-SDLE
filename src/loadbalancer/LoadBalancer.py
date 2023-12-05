@@ -12,31 +12,41 @@ script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
 logger = setup_logger(script_filename)
 
 # Macros
-HOST = '127.0.0.1'
-FRONTEND_PORT = 6666
-BACKEND_PORT = 7777
+FRONTEND_ENDPOINT = '127.0.0.1:6666'
+BACKEND_ENDPOINT = '127.0.0.1:7777'
 
 
 class LoadBalancer:
-    def __init__(self, host=HOST, frontend_port=FRONTEND_PORT, backend_port=BACKEND_PORT):
-        self.host = host
-        self.frontend_port = int(frontend_port)
-        self.backend_port = int(backend_port)
+    def __init__(self):
+        self.poller = None
+        self.backend = None
+        self.frontend = None
         self.context = zmq.Context.instance()
         self.workers = []
         self.ring = HashRing()
 
-    def start(self):
+    def init_sockets(self):
         self.frontend = self.context.socket(zmq.ROUTER)
-        self.frontend.bind(f"tcp://{self.host}:{self.frontend_port}")
-        logger.info(f"Frontend listening on {self.host}:{self.frontend_port}")
+        self.frontend.bind(f"tcp://{FRONTEND_ENDPOINT}")
+        logger.info(f"Frontend listening on {FRONTEND_ENDPOINT}")
+
         self.backend = self.context.socket(zmq.ROUTER)
-        self.backend.bind(f"tcp://{self.host}:{self.backend_port}")
-        logger.info(f"Backend listening on {self.host}:{self.backend_port}")
+        self.backend.bind(f"tcp://{BACKEND_ENDPOINT}")
+        logger.info(f"Backend listening on {BACKEND_ENDPOINT}")
 
         self.poller = zmq.Poller()
         self.poller.register(self.frontend, zmq.POLLIN)
         self.poller.register(self.backend, zmq.POLLIN)
+
+    def kill_sockets(self):
+        self.poller.unregister(self.frontend)
+        self.poller.unregister(self.backend)
+        self.frontend.setsockopt(zmq.LINGER, 0)
+        self.backend.setsockopt(zmq.LINGER, 0)
+        self.frontend.close()
+        self.backend.close()
+
+    def start(self):
 
         while True:
             sockets = dict(self.poller.poll())

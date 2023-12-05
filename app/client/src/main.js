@@ -13,7 +13,6 @@ if (env === 'development') {
 // Modules to control application life and create native browser window
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('node:path')
-const client = require("./Client.js")
 
 const createWindow = () => {
 
@@ -64,6 +63,5 @@ app.on('window-all-closed', () => {
 })
 
 function initBackend(){
-    let client = new Client()
-    client.sendMessage("boas", "boas")
+
 }
