@@ -36,7 +36,6 @@ class LoadBalancer:
         self.frontend_port = int(frontend_port)
         self.backend_port = int(backend_port)
         self.context = zmq.Context.instance()
-        self.workers = set()
         self.ring = HashRing()
 
     def start(self):
@@ -85,7 +84,8 @@ class LoadBalancer:
             request = [identity.encode("utf-8"), b"", b"", b"", json.dumps(cur_ring_msg).encode("utf-8")]
             self.backend.send_multipart(request)
             self.broadcast_message(identity, "JOIN_RING")
-            self.workers.add(identity)
+
+            self.ring.nodes.add(identity)
 
         if message['type'] == "REPLY":
             request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
@@ -123,9 +123,10 @@ class LoadBalancer:
             "type": event
         }
 
-        for worker in self.workers:
-            request = [worker.encode("utf-8"), b"", b"", b"", json.dumps(update_message).encode("utf-8")]
-            self.backend.send_multipart(request)
+        for worker in self.ring.nodes:
+            if worker != new_worker:
+                request = [worker.encode("utf-8"), b"", b"", b"", json.dumps(update_message).encode("utf-8")]
+                self.backend.send_multipart(request)
 
 
 def main():
