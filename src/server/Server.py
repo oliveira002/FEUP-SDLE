@@ -79,9 +79,6 @@ class Server:
                 request = self.receive_message_neighbour()
                 self.handle_request(request)
 
-
-
-
     def handle_request(self, request):
         client_id, req = request[0], request[1]
 
@@ -94,7 +91,7 @@ class Server:
         if req['type'] == 'POST':
             shopping_list = req['body']
             merged = self.persist_to_json(json.loads(req['body']))
-            self.send_message_response(client_id, merged)
+            self.send_message(self.socket, merged, "REPLY", client_id)
 
             _, neighbours = self.ring.get_server(shopping_list)
 
@@ -103,7 +100,12 @@ class Server:
         if req['type'] == 'REPLICATE':
             self.persist_to_json(req['body'])
 
+        if req['type'] == "JOIN_RING":
+            print(req)
+            self.ring.add_node(req['node'])
 
+        if req['type'] == "LEAVE_RING":
+            print(req)
 
     def replicate_data(self, neighbours, shopping_list):
         neighbours = [x.split('@', 1)[-1] for x in neighbours]
@@ -112,7 +114,7 @@ class Server:
         for neighbour in neighbours:
             try:
                 self.socket_neigh.connect(f'tcp://{neighbour}')
-                #print(f"Connected to {neighbour}")
+                # print(f"Connected to {neighbour}")
 
                 # Assuming you have a method to send messages
                 self.send_message(self.socket_neigh, shopping_list, "REPLICATE")
@@ -121,22 +123,23 @@ class Server:
             except Exception as e:
                 print(f"Failed to connect to {neighbour}: {e}")
 
+    def send_message(self, socket, body, message_type, client_identity=None):
 
-    def send_message(self, socket, body, message_type):
-        formatted_message = {
-            "identity": str(self.hostname),
-            "body": body,
-            "type": message_type
-        }
+        formatted_message = {}
+
+        if client_identity is not None:
+            formatted_message = {
+                "identity": client_identity,
+                "body": body,
+                "type": message_type
+            }
+        else:
+            formatted_message = {
+                "identity": str(self.hostname),
+                "body": body,
+                "type": message_type
+            }
         socket.send_json(formatted_message)
-
-    def send_message_response(self, client_identity, body):
-        formatted_message = {
-            "identity": client_identity,
-            "body": body,
-            "type": "REPLY"
-        }
-        self.socket.send_json(formatted_message)
 
     def receive_message(self):
         try:
@@ -192,8 +195,6 @@ class Server:
             json.dump(data, file, indent=2)
 
         return new_object
-
-
 
     def merge(self, existing_data, new_data):
         return new_data
