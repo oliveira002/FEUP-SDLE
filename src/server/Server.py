@@ -140,11 +140,13 @@ class Server:
 
     def handle_message(self, identity, message):
         if message["type"] == ClientMsgType.GET:
+            #self.send_message(self.socket, "ALIVE", ServerMsgType.ACK, str(self.hostname))
             shopping_list_id = message['body']
             # need to check the json and merge (?) quorum
             self.send_message(self.socket, "Quase", ServerMsgType.REPLY, identity)
 
         elif message["type"] == ClientMsgType.POST:
+            #self.send_message(self.socket, "ALIVE", ServerMsgType.ACK, str(self.hostname))
             shopping_list = json.loads(message['body'])
             merged = self.persist_to_json(shopping_list)
             self.send_message(self.socket, "Modified Shopping List Correctly", ServerMsgType.REPLY, identity)
@@ -229,7 +231,7 @@ class Server:
 
 def main():
     #server = Server(int(sys.argv[1]))
-    server = Server(1228)
+    server = Server(1229)
     server.start()
     server.stop()
 

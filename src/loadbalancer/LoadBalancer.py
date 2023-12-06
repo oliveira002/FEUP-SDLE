@@ -109,6 +109,8 @@ class LoadBalancer:
         elif message['type'] == ServerMsgType.REPLY:
             request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
             self.frontend.send_multipart(request)
+        elif message['type'] == "ACK":
+            print("RECEIVEDDDD")
         elif message['type'] == ServerMsgType.HEARTBEAT:
             pass
 
@@ -125,6 +127,10 @@ class LoadBalancer:
         request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
 
         self.backend.send_multipart(request)
+
+        # expected an ACK after sending request to know it worked, add a timeout for the message to come (?)
+        print(self.backend.recv_multipart())
+
 
     def send_message(self, socket, identity, message, msg_type: LoadbalMsgType):
         formatted_message = format_msg("Load Balancer", message, msg_type.value)
