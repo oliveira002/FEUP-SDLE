@@ -20,3 +20,20 @@ html {
     font-family: "Roboto Condensed", sans-serif;
     margin-top: 100px;
   }
+
+  .shopping-row{
+    display: flex;
+    flex-direction: row;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  button.home-button {
+    justify-self: center;
+    border: none;
+    color: #ffffff;
+    margin: 4px 2px;
+    height: 3rem;
+    
+  }
+  

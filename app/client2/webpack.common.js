@@ -1,6 +1,9 @@
 const path = require('path');
 
 module.exports = {
+  devServer: {
+    historyApiFallback: true,
+  },
   mode: 'development',
   entry: './src/js/index.js',
   devtool: 'inline-source-map',
