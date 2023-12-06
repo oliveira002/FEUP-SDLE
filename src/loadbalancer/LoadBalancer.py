@@ -29,7 +29,6 @@ class LoadBalancer:
         self.backend = None
         self.frontend = None
         self.context = zmq.Context.instance()
-        self.workers = []
         self.ring = HashRing()
 
     def init_sockets(self):
@@ -105,7 +104,10 @@ class LoadBalancer:
 
     def handle_server_message(self, identity, message):
         if message['type'] == "CONNECT":
-            pass
+            cur_ring_msg = self.ring.get_routing_table()
+            request = [identity.encode("utf-8"), b"", b"", b"", json.dumps(cur_ring_msg).encode("utf-8")]
+            self.backend.send_multipart(request)
+            self.broadcast_message(identity, "JOIN_RING")
         elif message['type'] == ServerMsgType.REPLY:
             request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
             self.frontend.send_multipart(request)
@@ -116,10 +118,11 @@ class LoadBalancer:
 
     def handle_client_message(self, identity, message):
         shopping_list = message['body']
-        value, neighbours = self.ring.get_server(shopping_list)
 
         if message['type'] == ClientMsgType.POST:
-            message['neighbours'] = neighbours
+            shopping_list = json.loads(shopping_list)['uuid']
+
+        value, neighbours = self.ring.get_server(shopping_list)
 
         request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
         self.backend.send_multipart(request)
@@ -129,6 +132,18 @@ class LoadBalancer:
         request = [identity.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(formatted_message).encode("utf-8")]
         socket.send_multipart(request)
         logger.info(f"Sent message \"{formatted_message}\"")
+
+    def broadcast_message(self, new_worker, event):
+
+        update_message = {
+            "node": new_worker,
+            "type": event
+        }
+
+        for worker in self.ring.nodes:
+            if worker != new_worker:
+                request = [worker.encode("utf-8"), b"", b"", b"", json.dumps(update_message).encode("utf-8")]
+                self.backend.send_multipart(request)
 
 
 def main():

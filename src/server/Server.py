@@ -3,7 +3,10 @@ import zmq
 import os
 import json
 from uuid import *
+import sys
 import hashlib
+import logging
+from src.loadbalancer.HashRing import HashRing
 
 from src.common.ClientMsgType import ClientMsgType
 from src.common.LoadbalMsgType import LoadbalMsgType
@@ -27,30 +30,43 @@ INTERVAL_MAX = 32
 
 class Server:
 
-    def __init__(self):
+    def __init__(self, port):
+        self.socket_neigh = None
+        self.ring = None
         self.loadbalLiveness = HEARTBEAT_LIVENESS
         self.socket = None
         self.id = None
         self.poller = None
         self.generate_id()
+        self.port = int(port)
+        self.hostname = f"tcp://127.0.0.1:{self.port}"
         self.context = zmq.Context()
 
-    def init_socket(self):
+    def init_sockets(self):
         self.socket = self.context.socket(zmq.DEALER)
+        self.socket_neigh = self.context.socket(zmq.DEALER)
         self.socket.identity = u"Server-{}".format(str(self.id)).encode("ascii")
+        self.socket_neigh.identity = u"Server2@{}".format(self.hostname).encode("ascii")
 
         self.poller = zmq.Poller()
         self.poller.register(self.socket, zmq.POLLIN)
+        self.poller.register(self.socket_neigh, zmq.POLLIN)
 
         self.socket.connect(f'tcp://{BROKER_ENDPOINT_1}')
+        self.socket_neigh.bind(self.hostname)
 
-    def kill_socket(self):
+    def kill_sockets(self):
         self.poller.unregister(self.socket)
+        self.poller.unregister(self.socket_neigh)
+
         self.socket.setsockopt(zmq.LINGER, 0)
+        self.socket_neigh.setsockopt(zmq.LINGER, 0)
+
         self.socket.close()
+        self.socket_neigh.close()
 
     def start(self):
-        self.init_socket()
+        self.init_sockets()
         logger.info(f"Connecting to broker at {BROKER_ENDPOINT_1}")
 
         self.send_message(str(self.id), "Connecting", ServerMsgType.CONNECT)
@@ -59,6 +75,10 @@ class Server:
         heartbeat_at = time.time() + HEARTBEAT_INTERVAL
         while True:
             sockets = dict(self.poller.poll(HEARTBEAT_INTERVAL * 1000))
+
+            if self.socket_neigh in sockets and sockets.get(self.socket_neigh) == zmq.POLLIN:
+                request = self.receive_message_neighbour()
+                self.handle_request(request)
 
             if self.socket in sockets and sockets.get(self.socket) == zmq.POLLIN:
 
@@ -87,16 +107,32 @@ class Server:
             if time.time() > heartbeat_at:
                 heartbeat_at = time.time() + HEARTBEAT_INTERVAL
                 logger.info("Sent heartbeat to load balancer")
-                self.send_message(str(self.id), "HEARTBEAT", ServerMsgType.HEARTBEAT)
+                self.send_message(self.socket, str(self.id), "HEARTBEAT", ServerMsgType.HEARTBEAT)
 
     def generate_id(self):
         unique_id = str(uuid4())
         hashed_id = hashlib.md5(unique_id.encode()).hexdigest()
         self.id = hashed_id[:8]
 
-    def send_message(self, identity, message, msg_type: ServerMsgType):
-        formatted_message = format_msg(identity, message, msg_type.value)
-        self.socket.send_json(formatted_message)
+    def replicate_data(self, neighbours, shopping_list):
+        neighbours = [x.split('@', 1)[-1] for x in neighbours]
+        print(neighbours)
+
+        for neighbour in neighbours:
+            try:
+                self.socket_neigh.connect(f'tcp://{neighbour}')
+                # print(f"Connected to {neighbour}")
+
+                # Assuming you have a method to send messages
+                self.send_message(self.socket_neigh, shopping_list, "REPLICATE")
+
+                # If needed, wait for a response or handle it asynchronously
+            except Exception as e:
+                print(f"Failed to connect to {neighbour}: {e}")
+
+    def send_message(self, socket, message, msg_type: ServerMsgType, identity=None):
+        formatted_message = format_msg(identity if identity is not None else str(self.hostname), message, msg_type.value)
+        socket.send_json(formatted_message)
         logger.info(f"Sent message \"{formatted_message}\"")
 
     def receive_message(self):
@@ -112,16 +148,45 @@ class Server:
 
     def handle_message(self, identity, message):
         if message["type"] == ClientMsgType.GET:
-            pass
+            shopping_list_id = message['body']
+            # need to check the json and merge (?) quorum
+            self.send_message(self.socket, "Quase", ServerMsgType.REPLY, identity)
         elif message["type"] == ClientMsgType.POST:
-            self.persist_to_json(json.loads(message['body']))
-            self.send_message(identity, "RESOURCE 1", ServerMsgType.REPLY)
+            shopping_list = json.loads(message['body'])
+            merged = self.persist_to_json(json.loads(shopping_list))
+            self.send_message(self.socket, "Modified Shopping List Correctly", ServerMsgType.REPLY, identity)
+            _, neighbours = self.ring.get_server(shopping_list['uuid'])
+            self.replicate_data(neighbours, merged)
         elif message["type"] == LoadbalMsgType.HEARTBEAT:
             logger.info("Received load balancer heartbeat")
+        elif message['type'] == 'REPLICATE':
+            self.persist_to_json(message['body'])
+        elif message['type'] == "JOIN_RING":
+            print(message)
+            self.ring.add_node(message['node'])
+        elif message['type'] == "RING":
+            nodes = list(message['nodes'])
+            self.ring = HashRing()
+            for server in nodes:
+                self.ring.add_node(server)
+        elif message['type'] == "LEAVE_RING":
+            print(message)
         else:
             logger.error("Invalid message received: \"%s\"", message)
 
         self.loadbalLiveness = HEARTBEAT_LIVENESS
+
+    def receive_message_neighbour(self):
+        try:
+            message = self.socket_neigh.recv_multipart()[0]
+            message = json.loads(message)
+            identity = message['identity']
+            logger.info(f"Received message \"{message}\" from {identity}")
+            return [identity, message]
+
+        except zmq.error.ZMQError as e:
+            logger.error("Error receiving message:", e)
+            return None
 
     def persist_to_json(self, new_object):
         file_path = f"shoppinglists/{self.id}.json"
@@ -135,31 +200,24 @@ class Server:
 
         # Check if the given JSON object exists in the list by uuid
         existing_list = data.get("ShoppingLists", [])
-        uuid_to_check = new_object.get("uuid")
-
-        object_exists = any(obj.get("uuid") == uuid_to_check for obj in existing_list)
-
-        if object_exists:
-            # If the object exists, call the merge function
-            self.merge(new_object, new_object)
-        else:
-            # If the object doesn't exist, append to the ShoppingLists list
-            existing_list.append(new_object)
+        existing_list.append(new_object)
 
         # Write the updated data back to the file with indentation
         with open(file_path, 'w') as file:
             json.dump(data, file, indent=2)
 
+        return new_object
+
     def merge(self, existing_data, new_data):
-        return
+        return new_data
 
     def stop(self):
-        self.kill_socket()
+        self.kill_sockets()
         self.context.term()
 
 
 def main():
-    server = Server()
+    server = Server(int(sys.argv[1]))
     server.start()
     server.stop()
 
