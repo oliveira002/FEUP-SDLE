@@ -79,7 +79,7 @@ class LoadBalancer:
 
                 if time.time() >= heartbeat_at:
                     for server in self.ring.nodes:
-                        self.send_message(self.backend, server, "HEARTBEAT", LoadbalMsgType.HEARTBEAT)
+                        self.send_message(self.backend, server, "Loadbalancer-PRIMARY", "HEARTBEAT", LoadbalMsgType.HEARTBEAT)
                     heartbeat_at = time.time() + HEARTBEAT_INTERVAL
 
             if self.frontend in sockets and sockets.get(self.frontend) == zmq.POLLIN:
@@ -124,9 +124,9 @@ class LoadBalancer:
         request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
         self.backend.send_multipart(request)
 
-    def send_message(self, socket, identity, message, msg_type: LoadbalMsgType):
-        formatted_message = format_msg("Load Balancer", message, msg_type.value)
-        request = [identity.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(formatted_message).encode("utf-8")]
+    def send_message(self, socket, recipient_identity, sender_identity, message, msg_type: LoadbalMsgType):
+        formatted_message = format_msg(sender_identity, message, msg_type.value)
+        request = [recipient_identity.encode("utf-8"), b"", sender_identity.encode("utf-8"), b"", json.dumps(formatted_message).encode("utf-8")]
         socket.send_multipart(request)
         logger.info(f"Sent message \"{formatted_message}\"")
 
