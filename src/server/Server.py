@@ -5,14 +5,11 @@ import json
 from uuid import *
 import sys
 import hashlib
-import logging
 from src.loadbalancer.HashRing import HashRing
 
 from src.common.ClientMsgType import ClientMsgType
 from src.common.LoadbalMsgType import LoadbalMsgType
 from src.common.ServerMsgType import ServerMsgType
-from src.common.ShoppingList import ShoppingList
-from src.common.ShoppingListItem import ShoppingListItem
 from src.common.utils import setup_logger, format_msg
 
 # Logger setup
@@ -69,7 +66,7 @@ class Server:
         self.init_sockets()
         logger.info(f"Connecting to broker at {BROKER_ENDPOINT_1}")
 
-        self.send_message(str(self.id), "Connecting", ServerMsgType.CONNECT)
+        self.send_message(self.socket, "Connecting", ServerMsgType.CONNECT, str(self.id))
 
         interval = INTERVAL_INIT
         heartbeat_at = time.time() + HEARTBEAT_INTERVAL
@@ -77,8 +74,8 @@ class Server:
             sockets = dict(self.poller.poll(HEARTBEAT_INTERVAL * 1000))
 
             if self.socket_neigh in sockets and sockets.get(self.socket_neigh) == zmq.POLLIN:
-                request = self.receive_message_neighbour()
-                self.handle_request(request)
+                identity, message = self.receive_message_neighbour()
+                self.handle_message(identity, message)
 
             if self.socket in sockets and sockets.get(self.socket) == zmq.POLLIN:
 
@@ -101,13 +98,13 @@ class Server:
 
                     if interval < INTERVAL_MAX:
                         interval *= 2
-                    self.kill_socket()
-                    self.init_socket()
+                    self.kill_sockets()
+                    self.init_sockets()
                     self.loadbalLiveness = HEARTBEAT_LIVENESS
             if time.time() > heartbeat_at:
                 heartbeat_at = time.time() + HEARTBEAT_INTERVAL
                 logger.info("Sent heartbeat to load balancer")
-                self.send_message(self.socket, str(self.id), "HEARTBEAT", ServerMsgType.HEARTBEAT)
+                self.send_message(self.socket, "HEARTBEAT", ServerMsgType.HEARTBEAT, str(self.id))
 
     def generate_id(self):
         unique_id = str(uuid4())
@@ -121,12 +118,7 @@ class Server:
         for neighbour in neighbours:
             try:
                 self.socket_neigh.connect(f'tcp://{neighbour}')
-                # print(f"Connected to {neighbour}")
-
-                # Assuming you have a method to send messages
-                self.send_message(self.socket_neigh, shopping_list, "REPLICATE")
-
-                # If needed, wait for a response or handle it asynchronously
+                self.send_message(self.socket_neigh, shopping_list, ServerMsgType.REPLICATE)
             except Exception as e:
                 print(f"Failed to connect to {neighbour}: {e}")
 
@@ -153,13 +145,13 @@ class Server:
             self.send_message(self.socket, "Quase", ServerMsgType.REPLY, identity)
         elif message["type"] == ClientMsgType.POST:
             shopping_list = json.loads(message['body'])
-            merged = self.persist_to_json(json.loads(shopping_list))
+            merged = self.persist_to_json(shopping_list)
             self.send_message(self.socket, "Modified Shopping List Correctly", ServerMsgType.REPLY, identity)
             _, neighbours = self.ring.get_server(shopping_list['uuid'])
             self.replicate_data(neighbours, merged)
         elif message["type"] == LoadbalMsgType.HEARTBEAT:
             logger.info("Received load balancer heartbeat")
-        elif message['type'] == 'REPLICATE':
+        elif message['type'] == ServerMsgType.REPLICATE:
             self.persist_to_json(message['body'])
         elif message['type'] == "JOIN_RING":
             print(message)
@@ -217,7 +209,8 @@ class Server:
 
 
 def main():
-    server = Server(int(sys.argv[1]))
+    #server = Server(int(sys.argv[1]))
+    server = Server(1235)
     server.start()
     server.stop()
 

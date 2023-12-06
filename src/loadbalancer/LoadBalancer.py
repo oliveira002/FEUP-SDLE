@@ -1,11 +1,8 @@
 import json
 import time
-
 from HashRing import HashRing
 import zmq
 import os
-import logging
-
 from src.common.LoadbalMsgType import LoadbalMsgType
 from src.common.ServerMsgType import ServerMsgType
 from src.common.ClientMsgType import ClientMsgType
