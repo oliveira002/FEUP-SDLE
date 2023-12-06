@@ -4,7 +4,7 @@ import Home from './Pages/Home';
 import ShoppingList from './Pages/ShoppingList';
 
 const App = ()=> {
- 
+  const d = 2;
   return (
     <HashRouter>
         <Routes>

@@ -1,13 +1,42 @@
-import React, { useState } from "react";
+import React, { useState, useEffect} from "react";
 import { useNavigate } from 'react-router-dom'
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
+import { fetchShoppingLists } from "../shoppingListOperations";
+import ButtonGroup from '@mui/material/ButtonGroup';
+
 const Home = () => {
-;
+    const userid = 1;
+    console.log("id", userid);
     const [shoppingListId, setShoppingListId] = useState('');
+    const [shoppingLists, setShoppingLists] = useState(null);
+    if(shoppingLists){ 
+        shoppingLists.ShoppingLists.map((shoppingList) => {
+            console.log("shoppingList", shoppingList);
+        })
+      
+    }
+
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const data = await fetchShoppingLists(userid);
+                setShoppingLists(data);
+                                   
+               
+            } catch (error) {
+                // Handle errors or display a message to the user
+            }
+        };
+  
+        fetchData();
+    }, []);
+
+  
     const handleNewList = () => {
 
         // Generate a new ID (for example, a random number for simplicity)
@@ -31,10 +60,29 @@ const Home = () => {
     return (
         <div>
         <AddShoppingCartIcon sx={{ fontSize: 40 }}/>
-        <h1>Welcome to Shopping Lists!</h1>
-        
+        <h1>Welcome!</h1>
+        <div className="shopping-lists home-button">
+            <h3 >My Shopping Lists</h3>
+            <ButtonGroup
+                orientation="vertical"
+                aria-label="vertical outlined button group"
+            >
+            {shoppingLists && shoppingLists.ShoppingLists.map((shoppingList) => {
+                return (
+                    
+                        <Button key={shoppingList.uuid} onClick={() => navigate(`/shopping-list/${shoppingList.uuid}`)}>Shopping List ID: {shoppingList.uuid}</Button>
+                      
+                );
+
+            }
+            )}
+            </ButtonGroup>
+        </div>
 
         <Button className="home-button" onClick={handleNewList} variant="contained">Create New Shopping List</Button>
+        <div className="shopping-lists">
+        </div>
+        
         <div className="shopping-row">
             <Box
                 component="form"
