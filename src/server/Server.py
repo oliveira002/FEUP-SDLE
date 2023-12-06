@@ -41,6 +41,8 @@ class Server:
     socket: zmq.Context.socket = None
 
     def __init__(self, host=HOST, port=PORT):
+        self.poller = None
+        self.socket_neigh = None
         self.ring = None
         self.hostname = None
         self.host = host
@@ -53,20 +55,29 @@ class Server:
         self.socket = self.context.socket(zmq.DEALER)
         self.socket.identity = u"Server@{}".format(hostname).encode("ascii")
         self.socket.connect(f'tcp://{BROKER}')
+
+        self.socket_neigh = self.context.socket(zmq.DEALER)
+        self.socket_neigh.identity = u"Server2@{}".format(hostname).encode("ascii")
+        self.socket_neigh.bind(f"tcp://127.0.0.1:{self.port}")
+
         logger.info(f'Server connected to Broker at {BROKER}')
         self.poller = zmq.Poller()
         self.poller.register(self.socket, zmq.POLLIN)
+        self.poller.register(self.socket_neigh, zmq.POLLIN)
         self.ring = None
 
-        self.send_message("Initial Setup", "CONNECT")
+        self.send_message(self.socket, "Initial Setup", "CONNECT")
 
         while True:
             socks = dict(self.poller.poll())
+
             if self.socket in socks and socks[self.socket] == zmq.POLLIN:
                 request = self.receive_message()
                 self.handle_request(request)
 
-
+            if self.socket_neigh in socks and socks[self.socket_neigh] == zmq.POLLIN:
+                request = self.receive_message_neighbour()
+                self.handle_request(request)
 
     def handle_request(self, request):
         client_id, req = request[0], request[1]
@@ -77,38 +88,84 @@ class Server:
             for server in nodes:
                 self.ring.add_node(server)
 
+        if req['type'] == 'GET':
+            shopping_list_id = req['body']
+
+            # need to check the json and merge (?) quorum
+            self.send_message(self.socket, "Quase", "REPLY", client_id)
+
         if req['type'] == 'POST':
-            shopping_list = req['body']
-            self.persist_to_json(json.loads(req['body']))
-            self.send_message_response(client_id, "RESOURCE 1")
+            shopping_list = json.loads(req['body'])
 
-            _, neighbours = self.ring.get_server(shopping_list)
+            merged = self.persist_to_json(shopping_list)
 
+            self.send_message(self.socket, "Modified Shopping List Correctly", "REPLY", client_id)
 
+            _, neighbours = self.ring.get_server(shopping_list['uuid'])
 
+            self.replicate_data(neighbours, merged)
 
+        if req['type'] == 'REPLICATE':
+            self.persist_to_json(req['body'])
 
-    def send_message(self, body, message_type):
-        formatted_message = {
-            "identity": str(self.hostname),
-            "body": body,
-            "type": message_type
-        }
-        self.socket.send_json(formatted_message)
+        if req['type'] == "JOIN_RING":
+            print(req)
+            self.ring.add_node(req['node'])
 
-    def send_message_response(self, client_identity, body):
-        formatted_message = {
-            "identity": client_identity,
-            "body": body,
-            "type": "REPLY"
-        }
-        self.socket.send_json(formatted_message)
+        if req['type'] == "LEAVE_RING":
+            print(req)
+
+    def replicate_data(self, neighbours, shopping_list):
+        neighbours = [x.split('@', 1)[-1] for x in neighbours]
+        print(neighbours)
+
+        for neighbour in neighbours:
+            try:
+                self.socket_neigh.connect(f'tcp://{neighbour}')
+                # print(f"Connected to {neighbour}")
+
+                # Assuming you have a method to send messages
+                self.send_message(self.socket_neigh, shopping_list, "REPLICATE")
+
+                # If needed, wait for a response or handle it asynchronously
+            except Exception as e:
+                print(f"Failed to connect to {neighbour}: {e}")
+
+    def send_message(self, socket, body, message_type, client_identity=None):
+
+        formatted_message = {}
+
+        if client_identity is not None:
+            formatted_message = {
+                "identity": client_identity,
+                "body": body,
+                "type": message_type
+            }
+        else:
+            formatted_message = {
+                "identity": str(self.hostname),
+                "body": body,
+                "type": message_type
+            }
+        socket.send_json(formatted_message)
 
     def receive_message(self):
         try:
             _, identity, _, message = self.socket.recv_multipart()
             message = json.loads(message)
             identity = identity.decode("utf-8")
+            logger.info(f"Received message \"{message}\" from {identity}")
+            return [identity, message]
+
+        except zmq.error.ZMQError as e:
+            logger.error("Error receiving message:", e)
+            return None
+
+    def receive_message_neighbour(self):
+        try:
+            message = self.socket_neigh.recv_multipart()[0]
+            message = json.loads(message)
+            identity = message['identity']
             logger.info(f"Received message \"{message}\" from {identity}")
             return [identity, message]
 
@@ -128,23 +185,16 @@ class Server:
 
         # Check if the given JSON object exists in the list by uuid
         existing_list = data.get("ShoppingLists", [])
-        uuid_to_check = new_object.get("uuid")
-
-        object_exists = any(obj.get("uuid") == uuid_to_check for obj in existing_list)
-
-        if object_exists:
-            # If the object exists, call the merge function
-            self.merge(new_object, new_object)
-        else:
-            # If the object doesn't exist, append to the ShoppingLists list
-            existing_list.append(new_object)
+        existing_list.append(new_object)
 
         # Write the updated data back to the file with indentation
         with open(file_path, 'w') as file:
             json.dump(data, file, indent=2)
 
+        return new_object
+
     def merge(self, existing_data, new_data):
-        return
+        return new_data
 
     def stop(self):
         self.socket.close()
