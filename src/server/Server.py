@@ -103,7 +103,7 @@ class Server:
                     self.loadbalLiveness = HEARTBEAT_LIVENESS
             if time.time() > heartbeat_at:
                 heartbeat_at = time.time() + HEARTBEAT_INTERVAL
-                logger.info("Sent heartbeat to load balancer")
+                # logger.info("Sent heartbeat to load balancer")
                 self.send_message(self.socket, "HEARTBEAT", ServerMsgType.HEARTBEAT, str(self.id))
 
     def generate_id(self):
@@ -120,7 +120,7 @@ class Server:
                 self.socket_neigh.connect(f'tcp://{neighbour}')
                 self.send_message(self.socket_neigh, shopping_list, ServerMsgType.REPLICATE)
             except Exception as e:
-                print(f"Failed to connect to {neighbour}: {e}")
+                logger.error(f"Failed to connect to {neighbour}: {e}")
 
     def send_message(self, socket, message, msg_type: ServerMsgType, identity=None):
         formatted_message = format_msg(identity if identity is not None else str(self.hostname), message, msg_type.value)
@@ -150,7 +150,8 @@ class Server:
             _, neighbours = self.ring.get_server(shopping_list['uuid'])
             self.replicate_data(neighbours, merged)
         elif message["type"] == LoadbalMsgType.HEARTBEAT:
-            logger.info("Received load balancer heartbeat")
+            # logger.info("Received load balancer heartbeat")
+            pass
         elif message['type'] == ServerMsgType.REPLICATE:
             self.persist_to_json(message['body'])
         elif message['type'] == "JOIN_RING":
