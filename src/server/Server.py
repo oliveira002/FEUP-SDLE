@@ -200,7 +200,18 @@ class Server:
 
         # Check if the given JSON object exists in the list by uuid
         existing_list = data.get("ShoppingLists", [])
-        existing_list.append(new_object)
+        uuid_to_check = new_object.get("uuid")
+
+        object_exists = any(obj.get("uuid") == uuid_to_check for obj in existing_list)
+
+        if object_exists:
+            for i, obj in enumerate(existing_list):
+                if obj.get("uuid") == uuid_to_check:
+                    new_object = self.merge(obj, new_object)
+                    existing_list[i] = new_object
+        else:
+            # If the object doesn't exist, append to the ShoppingLists list
+            existing_list.append(new_object)
 
         # Write the updated data back to the file with indentation
         with open(file_path, 'w') as file:
@@ -218,7 +229,7 @@ class Server:
 
 def main():
     #server = Server(int(sys.argv[1]))
-    server = Server(1229)
+    server = Server(1228)
     server.start()
     server.stop()
 

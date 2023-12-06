@@ -123,6 +123,7 @@ class LoadBalancer:
         value, neighbours = self.ring.get_server(shopping_list)
 
         request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
+
         self.backend.send_multipart(request)
 
     def send_message(self, socket, identity, message, msg_type: LoadbalMsgType):
