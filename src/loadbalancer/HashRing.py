@@ -22,20 +22,19 @@ class HashRing:
         self.num_replicas = num_replicas
         self.ring = SortedDict()
 
-
     def add_node(self, key):
         self.nodes.add(key)
         for i in range(self.v_nodes):
             hashed = hash_function(key + '-' + str(i))
             self.ring[hashed] = key
 
-
     def remove_node(self, key):
+        self.nodes.remove(key)
         for i in range(self.v_nodes):
             hashed = hash_function(key + '-' + str(i))
             del self.ring[hashed]
         return
-    
+
     def get_server(self, shopping_list_id, num_keys=NUM_REPLICAS):
         hashed = hash_function(shopping_list_id)
         keys = list(self.ring.keys())
@@ -76,6 +75,3 @@ class HashRing:
         }
 
         return serialized_data
-
-
-
