@@ -36,21 +36,21 @@ class Server:
         self.poller = None
         self.generate_id()
         self.port = int(port)
-        self.hostname = f"tcp://127.0.0.1:{self.port}"
+        self.hostname = f"127.0.0.1:{self.port}"
         self.context = zmq.Context()
 
     def init_sockets(self):
         self.socket = self.context.socket(zmq.DEALER)
         self.socket_neigh = self.context.socket(zmq.DEALER)
-        self.socket.identity = u"Server-{}".format(str(self.id)).encode("ascii")
-        self.socket_neigh.identity = u"Server2@{}".format(self.hostname).encode("ascii")
+        self.socket.identity = u"Server@{}".format(str(self.hostname)).encode("ascii")
+        self.socket_neigh.identity = u"Server2@{}".format(str(self.hostname)).encode("ascii")
 
         self.poller = zmq.Poller()
         self.poller.register(self.socket, zmq.POLLIN)
         self.poller.register(self.socket_neigh, zmq.POLLIN)
 
         self.socket.connect(f'tcp://{BROKER_ENDPOINT_1}')
-        self.socket_neigh.bind(self.hostname)
+        self.socket_neigh.bind(f'tcp://{self.hostname}')
 
     def kill_sockets(self):
         self.poller.unregister(self.socket)
@@ -66,7 +66,7 @@ class Server:
         self.init_sockets()
         logger.info(f"Connecting to broker at {BROKER_ENDPOINT_1}")
 
-        self.send_message(self.socket, "Connecting", ServerMsgType.CONNECT, str(self.id))
+        self.send_message(self.socket, "Connecting", ServerMsgType.CONNECT, str(self.hostname))
 
         interval = INTERVAL_INIT
         heartbeat_at = time.time() + HEARTBEAT_INTERVAL
@@ -104,7 +104,7 @@ class Server:
             if time.time() > heartbeat_at:
                 heartbeat_at = time.time() + HEARTBEAT_INTERVAL
                 # logger.info("Sent heartbeat to load balancer")
-                self.send_message(self.socket, "HEARTBEAT", ServerMsgType.HEARTBEAT, str(self.id))
+                self.send_message(self.socket, "HEARTBEAT", ServerMsgType.HEARTBEAT, str(self.hostname))
 
     def generate_id(self):
         unique_id = str(uuid4())
@@ -143,27 +143,34 @@ class Server:
             shopping_list_id = message['body']
             # need to check the json and merge (?) quorum
             self.send_message(self.socket, "Quase", ServerMsgType.REPLY, identity)
+
         elif message["type"] == ClientMsgType.POST:
             shopping_list = json.loads(message['body'])
             merged = self.persist_to_json(shopping_list)
             self.send_message(self.socket, "Modified Shopping List Correctly", ServerMsgType.REPLY, identity)
             _, neighbours = self.ring.get_server(shopping_list['uuid'])
             self.replicate_data(neighbours, merged)
+
         elif message["type"] == LoadbalMsgType.HEARTBEAT:
             # logger.info("Received load balancer heartbeat")
             pass
+
         elif message['type'] == ServerMsgType.REPLICATE:
             self.persist_to_json(message['body'])
+
         elif message['type'] == "JOIN_RING":
             print(message)
             self.ring.add_node(message['node'])
+
         elif message['type'] == "RING":
             nodes = list(message['nodes'])
             self.ring = HashRing()
             for server in nodes:
                 self.ring.add_node(server)
+
         elif message['type'] == "LEAVE_RING":
             print(message)
+
         else:
             logger.error("Invalid message received: \"%s\"", message)
 
@@ -182,7 +189,7 @@ class Server:
             return None
 
     def persist_to_json(self, new_object):
-        file_path = f"shoppinglists/{self.id}.json"
+        file_path = f"shoppinglists/{self.port}.json"
         try:
             # Load existing data from the file
             with open(file_path, 'r') as file:
@@ -211,7 +218,7 @@ class Server:
 
 def main():
     #server = Server(int(sys.argv[1]))
-    server = Server(1235)
+    server = Server(1229)
     server.start()
     server.stop()
 
