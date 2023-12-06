@@ -7,3 +7,10 @@ body {
     align-items: center;
     justify-content: center;
 }
+.Product-img img {
+  width: 100%;
+}
+.main-section {
+  font-family: "Roboto Condensed", sans-serif;
+  margin-top: 100px;
+}

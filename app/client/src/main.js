@@ -14,6 +14,7 @@ if (env === 'development') {
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('node:path')
 
+
 const createWindow = () => {
 
   const { screen } = require('electron')
@@ -63,5 +64,6 @@ app.on('window-all-closed', () => {
 })
 
 function initBackend(){
-
-}
+    
+} 
+ 
