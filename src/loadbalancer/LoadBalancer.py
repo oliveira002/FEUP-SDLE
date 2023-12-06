@@ -100,6 +100,7 @@ class LoadBalancer:
         self.context.term()
 
     def handle_server_message(self, identity, message):
+        self.ring.add_node(identity)
         if message['type'] == "CONNECT":
             cur_ring_msg = self.ring.get_routing_table()
             request = [identity.encode("utf-8"), b"", b"", b"", json.dumps(cur_ring_msg).encode("utf-8")]
@@ -111,7 +112,7 @@ class LoadBalancer:
         elif message['type'] == ServerMsgType.HEARTBEAT:
             pass
 
-        self.ring.add_node(identity)
+
 
     def handle_client_message(self, identity, message):
         shopping_list = message['body']
@@ -122,6 +123,7 @@ class LoadBalancer:
         value, neighbours = self.ring.get_server(shopping_list)
 
         request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
+
         self.backend.send_multipart(request)
 
     def send_message(self, socket, recipient_identity, sender_identity, message, msg_type: LoadbalMsgType):
