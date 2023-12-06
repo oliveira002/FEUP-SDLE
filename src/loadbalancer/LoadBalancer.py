@@ -1,120 +1,141 @@
 import json
+import time
 from HashRing import HashRing
 import zmq
 import os
-import logging
-from src.common.ServerMessageType import ServerMessageType
-from src.common.ClientMessageType import ClientMessageType
+from src.common.LoadbalMsgType import LoadbalMsgType
+from src.common.ServerMsgType import ServerMsgType
+from src.common.ClientMsgType import ClientMsgType
+from src.common.utils import setup_logger, format_msg
 
 # Logger setup
 script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
-logger = logging.getLogger(script_filename)
-logger.setLevel(logging.DEBUG)
-
-stream_h = logging.StreamHandler()
-file_h = logging.FileHandler('../logs.log')
-
-stream_h.setLevel(logging.DEBUG)
-file_h.setLevel(logging.DEBUG)
-
-formatter = logging.Formatter(fmt='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', datefmt='%d/%m/%Y %H:%M:%S')
-stream_h.setFormatter(formatter)
-file_h.setFormatter(formatter)
-
-logger.addHandler(stream_h)
-logger.addHandler(file_h)
+logger = setup_logger(script_filename)
 
 # Macros
-HOST = '127.0.0.1'
-FRONTEND_PORT = 6666
-BACKEND_PORT = 7777
+FRONTEND_ENDPOINT = '127.0.0.1:6666'
+BACKEND_ENDPOINT = '127.0.0.1:7777'
+HEARTBEAT_LIVENESS = 3
+HEARTBEAT_INTERVAL = 1.0
 
 
 class LoadBalancer:
-    def __init__(self, host=HOST, frontend_port=FRONTEND_PORT, backend_port=BACKEND_PORT):
-        self.host = host
-        self.frontend_port = int(frontend_port)
-        self.backend_port = int(backend_port)
+    def __init__(self):
+        self.server_poller = None
+        self.both_poller = None
+        self.backend = None
+        self.frontend = None
         self.context = zmq.Context.instance()
         self.ring = HashRing()
 
-    def start(self):
+    def init_sockets(self):
         self.frontend = self.context.socket(zmq.ROUTER)
-        self.frontend.bind(f"tcp://{self.host}:{self.frontend_port}")
-        logger.info(f"Frontend listening on {self.host}:{self.frontend_port}")
+        self.frontend.bind(f"tcp://{FRONTEND_ENDPOINT}")
+
         self.backend = self.context.socket(zmq.ROUTER)
-        self.backend.bind(f"tcp://{self.host}:{self.backend_port}")
-        logger.info(f"Backend listening on {self.host}:{self.backend_port}")
+        self.backend.bind(f"tcp://{BACKEND_ENDPOINT}")
 
-        self.poller = zmq.Poller()
-        self.poller.register(self.frontend, zmq.POLLIN)
-        self.poller.register(self.backend, zmq.POLLIN)
+        self.server_poller = zmq.Poller()
+        self.server_poller.register(self.backend, zmq.POLLIN)
 
+        self.both_poller = zmq.Poller()
+        self.both_poller.register(self.frontend, zmq.POLLIN)
+        self.both_poller.register(self.backend, zmq.POLLIN)
+
+    def kill_sockets(self):
+        self.both_poller.unregister(self.frontend)
+        self.both_poller.unregister(self.backend)
+        self.server_poller.unregister(self.backend)
+
+        self.frontend.setsockopt(zmq.LINGER, 0)
+        self.backend.setsockopt(zmq.LINGER, 0)
+
+        self.frontend.close()
+        self.backend.close()
+
+    def start(self):
+        self.init_sockets()
+        logger.info(f"Frontend listening on {FRONTEND_ENDPOINT}")
+        logger.info(f"Backend listening on {BACKEND_ENDPOINT}")
+
+        heartbeat_at = time.time() + HEARTBEAT_INTERVAL
         while True:
-            sockets = dict(self.poller.poll())
+            if len(self.ring.nodes) > 0:
+                poller = self.both_poller
+            else:
+                poller = self.server_poller
+            sockets = dict(poller.poll(HEARTBEAT_INTERVAL * 1000))
 
-            identity = None
-            message = None
+            if self.backend in sockets and sockets.get(self.backend) == zmq.POLLIN:
+                frames = self.backend.recv_multipart()
+                if not frames:
+                    break
 
-            if self.frontend in sockets:
-                identity, _, message = self.frontend.recv_multipart()
-                identity = identity.decode("utf-8")
-                message = json.loads(message.decode("utf-8"))
-                logger.info(f"Received message \"{message}\" from {identity}")
-
-                self.handle_client_message(identity, message)
-
-            if self.backend in sockets:
-                identity, message = self.backend.recv_multipart()
-                identity = identity.decode("utf-8")
-                message = json.loads(message.decode("utf-8"))
+                identity = frames[0].decode("utf-8")
+                message = json.loads(frames[1].decode("utf-8"))
                 logger.info(f"Received message \"{message}\" from {identity}")
 
                 self.handle_server_message(identity, message)
 
+                if time.time() >= heartbeat_at:
+                    for server in self.ring.nodes:
+                        self.send_message(self.backend, server, "Loadbalancer-PRIMARY", "HEARTBEAT", LoadbalMsgType.HEARTBEAT)
+                    heartbeat_at = time.time() + HEARTBEAT_INTERVAL
+
+            if self.frontend in sockets and sockets.get(self.frontend) == zmq.POLLIN:
+                frames = self.frontend.recv_multipart()
+                if not frames:
+                    break
+
+                identity = frames[0].decode("utf-8")
+                message = json.loads(frames[2].decode("utf-8"))
+                logger.info(f"Received message \"{message}\" from {identity}")
+
+                self.handle_client_message(identity, message)
+
+            # self.ring.nodes.purge()
+
     def stop(self):
-        self.backend.close()
-        self.frontend.close()
+        self.kill_sockets()
         self.context.term()
 
     def handle_server_message(self, identity, message):
+        self.ring.add_node(identity)
         if message['type'] == "CONNECT":
-            self.ring.add_node(identity)
             cur_ring_msg = self.ring.get_routing_table()
             request = [identity.encode("utf-8"), b"", b"", b"", json.dumps(cur_ring_msg).encode("utf-8")]
             self.backend.send_multipart(request)
             self.broadcast_message(identity, "JOIN_RING")
-
-            self.ring.nodes.add(identity)
-
-        if message['type'] == "REPLY":
+        elif message['type'] == ServerMsgType.REPLY:
             request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
             self.frontend.send_multipart(request)
-
-        if message['type'] == ServerMessageType.HEARTBEAT:
+        elif message['type'] == "ACK":
+            print("RECEIVEDDDD")
+        elif message['type'] == ServerMsgType.HEARTBEAT:
             pass
 
+
+
     def handle_client_message(self, identity, message):
-        if message['type'] == "GET":
-            shopping_list = message['body']
-            value, _ = self.ring.get_server(shopping_list)
-            request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"",
-                       json.dumps(message).encode("utf-8")]
-            self.backend.send_multipart(request)
+        shopping_list = message['body']
 
-        if message['type'] == "POST":
-            shopping_list = message['body']
-            shopping_list = json.loads(shopping_list)
+        if message['type'] == ClientMsgType.POST:
+            shopping_list = json.loads(shopping_list)['uuid']
 
-            value, neighbours = self.ring.get_server(shopping_list['uuid'])
-            request_resource = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"",
-                       json.dumps(message).encode("utf-8")]
+        value, neighbours = self.ring.get_server(shopping_list)
 
-            #replicate_msg = self.parse_message(shopping_list,neighbours)
-            #request_replicate = [value.encode("utf-8"), b"", b"", b"", json.dumps(replicate_msg).encode("utf-8")]
+        request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
 
-            self.backend.send_multipart(request_resource)
-            #self.backend.send_multipart(request_replicate)
+        self.backend.send_multipart(request)
+
+        # expected an ACK after sending request to know it worked, add a timeout for the message to come (?)
+        # print(self.backend.recv_multipart())
+
+    def send_message(self, socket, recipient_identity, sender_identity, message, msg_type: LoadbalMsgType):
+        formatted_message = format_msg(sender_identity, message, msg_type.value)
+        request = [recipient_identity.encode("utf-8"), b"", sender_identity.encode("utf-8"), b"", json.dumps(formatted_message).encode("utf-8")]
+        socket.send_multipart(request)
+        logger.info(f"Sent message \"{formatted_message}\"")
 
     def broadcast_message(self, new_worker, event):
 
