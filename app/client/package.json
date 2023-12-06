@@ -21,6 +21,7 @@
     "electron-reloader": "^1.2.3"
   },
   "dependencies": {
+    "bootstrap": "^4.6.2",
     "electron-squirrel-startup": "^1.0.0",
     "uuidv4": "^6.2.13",
     "zeromq": "^5.3.1"
