@@ -129,7 +129,7 @@ class LoadBalancer:
         self.backend.send_multipart(request)
 
         # expected an ACK after sending request to know it worked, add a timeout for the message to come (?)
-        #print(self.backend.recv_multipart())
+        # print(self.backend.recv_multipart())
 
     def send_message(self, socket, recipient_identity, sender_identity, message, msg_type: LoadbalMsgType):
         formatted_message = format_msg(sender_identity, message, msg_type.value)
