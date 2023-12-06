@@ -231,7 +231,7 @@ class Server:
 
 def main():
     #server = Server(int(sys.argv[1]))
-    server = Server(1229)
+    server = Server(1228)
     server.start()
     server.stop()
 
