@@ -42,6 +42,7 @@ class Client:
         logger.info(f"Connecting to broker at {BROKER_ENDPOINT_1}")
 
         sl = ShoppingList()
+        sl.uuid = "8c6dd67b-e96f-40cf-bf99-858b6f27eac7"
         sl.inc_or_add_item("bananas", 1, "1231-31-23123-12-33")
         sl.inc_or_add_item("bananas", 2, "1231-31-23123-12-33")
         sl.inc_or_add_item("cebolas", 3, "1231-31-23123-12-33")

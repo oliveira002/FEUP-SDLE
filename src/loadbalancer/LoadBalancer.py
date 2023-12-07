@@ -73,7 +73,8 @@ class LoadBalancer:
 
                 identity = frames[0].decode("utf-8")
                 message = json.loads(frames[1].decode("utf-8"))
-                logger.info(f"Received message \"{message}\" from {identity}")
+
+                #logger.info(f"Received message \"{message}\" from {identity}")
 
                 self.handle_server_message(identity, message)
 
@@ -124,9 +125,22 @@ class LoadBalancer:
 
         value, neighbours = self.ring.get_server(shopping_list)
 
-        request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
+        neighbours.insert(0, value)
 
-        self.backend.send_multipart(request)
+        print(neighbours)
+        if message['type'] == ClientMsgType.GET:
+            pass
+        elif message['type'] == ClientMsgType.POST:
+            for i in range(len(neighbours)):
+                request = [neighbours[i].encode("utf-8"), b"", identity.encode("utf-8"), b"",
+                           json.dumps(message).encode("utf-8")]
+
+                self.backend.send_multipart(request)
+                ack_identity, _ = self.backend.recv_multipart()
+                if neighbours[i] == ack_identity.decode("utf-8"):
+                    print("foi")
+                    break;
+
 
         # expected an ACK after sending request to know it worked, add a timeout for the message to come (?)
         # print(self.backend.recv_multipart())

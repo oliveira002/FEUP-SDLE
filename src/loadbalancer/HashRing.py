@@ -22,11 +22,13 @@ class HashRing:
         self.num_replicas = num_replicas
         self.ring = SortedDict()
 
+
     def add_node(self, key):
         self.nodes.add(key)
         for i in range(self.v_nodes):
             hashed = hash_function(key + '-' + str(i))
             self.ring[hashed] = key
+
 
     def remove_node(self, key):
         self.nodes.remove(key)
@@ -54,12 +56,14 @@ class HashRing:
 
     def node_range(self, hashed_key, n=NUM_REPLICAS - 1):
         keys = list(self.ring.keys())
-        keys.extend(keys[:n])
+        total_keys = len(keys)
 
-        index = keys.index(hashed_key)
-        next_elements = keys[index + 1:index + 1 + n]
+        start_index = keys.index(hashed_key) + 1
+        all_neighbours = keys[start_index:] + keys[:start_index]
 
-        return next_elements
+        all_neighbours.remove(hashed_key)
+
+        return all_neighbours
 
     def __str__(self):
         serialized_data = {
@@ -75,3 +79,4 @@ class HashRing:
         }
 
         return serialized_data
+

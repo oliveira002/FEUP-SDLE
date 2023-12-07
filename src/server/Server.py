@@ -23,6 +23,7 @@ HEARTBEAT_LIVENESS = 3
 HEARTBEAT_INTERVAL = 1
 INTERVAL_INIT = 1
 INTERVAL_MAX = 32
+N_REPLICAS = 3
 
 
 class Server:
@@ -85,7 +86,7 @@ class Server:
 
                 identity = frames[1].decode("utf-8")
                 message = json.loads(frames[3].decode("utf-8"))
-                logger.info(f"Received message \"{message}\" from {identity}")
+                #logger.info(f"Received message \"{message}\" from {identity}")
 
                 self.handle_message(identity, message)
                 interval = INTERVAL_INIT
@@ -113,7 +114,7 @@ class Server:
 
     def replicate_data(self, neighbours, shopping_list):
         neighbours = [x.split('@', 1)[-1] for x in neighbours]
-        print(neighbours)
+        #print(neighbours)
 
         for neighbour in neighbours:
             try:
@@ -125,14 +126,14 @@ class Server:
     def send_message(self, socket, message, msg_type: ServerMsgType, identity=None):
         formatted_message = format_msg(identity if identity is not None else str(self.hostname), message, msg_type.value)
         socket.send_json(formatted_message)
-        logger.info(f"Sent message \"{formatted_message}\"")
+        #logger.info(f"Sent message \"{formatted_message}\"")
 
     def receive_message(self):
         try:
             _, identity, _, message = self.socket.recv_multipart()
             message = json.loads(message)
             identity = identity.decode("utf-8")
-            logger.info(f"Received message \"{message}\" from {identity}")
+            #logger.info(f"Received message \"{message}\" from {identity}")
             return [identity, message]
         except zmq.error.ZMQError as e:
             logger.error("Error receiving message:", e)
@@ -146,19 +147,41 @@ class Server:
             self.send_message(self.socket, "Quase", ServerMsgType.REPLY, identity)
 
         elif message["type"] == ClientMsgType.POST:
-            #self.send_message(self.socket, "ALIVE", ServerMsgType.ACK, str(self.hostname))
+            self.send_message(self.socket, "ALIVE", ServerMsgType.ACK, str(self.hostname))
             shopping_list = json.loads(message['body'])
-            merged = self.persist_to_json(shopping_list)
+            self.hinted_handoff(shopping_list, identity)
+
+            #merged = self.persist_to_json(shopping_list)
             self.send_message(self.socket, "Modified Shopping List Correctly", ServerMsgType.REPLY, identity)
-            _, neighbours = self.ring.get_server(shopping_list['uuid'])
-            self.replicate_data(neighbours, merged)
+            #_, neighbours = self.ring.get_server(shopping_list['uuid'])
+            #self.replicate_data(neighbours, merged)
 
         elif message["type"] == LoadbalMsgType.HEARTBEAT:
             # logger.info("Received load balancer heartbeat")
             pass
 
         elif message['type'] == ServerMsgType.REPLICATE:
-            self.persist_to_json(message['body'])
+
+            self.send_message(self.socket_neigh, "ACK", ServerMsgType.ACK)
+
+            shopping_list = message['body']
+            coordinator, neighbours = self.ring.get_server(shopping_list['uuid'])
+
+            cur_identity = self.socket.identity.decode("utf-8")
+            neighbours.insert(0, coordinator)
+
+            cur_index = neighbours.index(cur_identity)
+
+            if cur_index > N_REPLICAS - 1:
+                # meaning I need to handoff later
+                print(neighbours)
+                print(cur_index)
+                handoff_recipient = neighbours[cur_index % N_REPLICAS]
+                print("HANDOFF:", handoff_recipient)
+                pass
+
+            print(shopping_list)
+            self.persist_to_json(shopping_list)
 
         elif message['type'] == "JOIN_RING":
             print(message)
@@ -177,6 +200,57 @@ class Server:
             logger.error("Invalid message received: \"%s\"", message)
 
         self.loadbalLiveness = HEARTBEAT_LIVENESS
+
+
+    def hinted_handoff(self, shopping_list, client_id):
+        shopping_id = shopping_list['uuid']
+        coordinator, neighbours = self.ring.get_server(shopping_id)
+        cur_identity = self.socket.identity.decode("utf-8")
+        neighbours.insert(0, coordinator)
+
+        cur_index = neighbours.index(cur_identity)
+        new_neighbours = neighbours[cur_index + 1:]
+        new_neighbours = [x.split('@', 1)[-1] for x in new_neighbours]
+
+
+        self.persist_to_json(shopping_list)
+
+        if cur_index > N_REPLICAS - 1:
+            #meaning I need to handoff later
+            handoff_recipient = neighbours[cur_index % N_REPLICAS]
+            print("HANDOFF:", handoff_recipient)
+            pass
+
+        counter = 0
+        print(new_neighbours)
+        acks_response = set()
+        for neighbour in new_neighbours:
+            try:
+                if counter == 2:
+                    break
+                self.socket_neigh.connect(f'tcp://{neighbour}')
+                self.send_message(self.socket_neigh, shopping_list, ServerMsgType.REPLICATE)
+
+                socks = dict(self.poller.poll(2500))
+
+                if self.socket_neigh in socks and socks[self.socket_neigh] == zmq.POLLIN:
+                    ack_identity, message = self.receive_message_neighbour()
+                    print(ack_identity)
+                    print(neighbour)
+                    if ack_identity == neighbour:
+                        print("Received ACK from", ack_identity)
+                        acks_response.add(ack_identity)
+                        counter += 1
+                    else:
+                        print("Invalid ACK received from", ack_identity)
+                else:
+                    print(f"No ACK received from {neighbour} within 2.5 seconds.")
+
+                print("RECEIVED ACKS:", acks_response)
+            except zmq.error.ZMQError as e:
+                print(f"Error connecting to {neighbour}: {e}")
+
+
 
     def receive_message_neighbour(self):
         try:
@@ -230,8 +304,7 @@ class Server:
 
 
 def main():
-    #server = Server(int(sys.argv[1]))
-    server = Server(1228)
+    server = Server(int(sys.argv[1]))
     server.start()
     server.stop()
 
