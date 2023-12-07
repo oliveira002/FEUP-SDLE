@@ -34,12 +34,26 @@ const ShoppingList = () => {
     const [products, setProducts] = useState([]);
         const [shoppingList, setShoppingList] = useState(null);
     const [shoppingLists, setShoppingLists] = useState(null);
+    const [svShoppingList, setSvShoppingList] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const { id } = useParams(); // Get the ID from the URL
     const userid = 1;
 
+    const { ipcRenderer } = window.require('electron');
     
     useEffect(() => {
+      ipcRenderer.send('frontMessage', {body: id, type: "GET"});
+
+      const fetchServerData = async () => {
+        ipcRenderer.on('zmqMessage', (event, information) => {
+          let parsed = JSON.stringify(information)
+          if (parsed.type == "REPLY") {
+            setSvShoppingList(parsed)
+            console.log(parsed)
+          }
+        });
+      }
+
       const fetchData = async () => {
           try {
               const data = await fetchShoppingLists(userid);
@@ -71,6 +85,7 @@ const ShoppingList = () => {
       };
 
       fetchData();
+      fetchServerData()
   }, []);
     
     // Function to update quantity
@@ -81,7 +96,7 @@ const ShoppingList = () => {
         )
       );
     };
-  
+
     // Calculate subtotal for each product
     const calculateSubtotal = (product) => {
       return  product.quantity;

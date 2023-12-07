@@ -29,6 +29,15 @@ class Client {
     const endpoint = 'tcp://127.0.0.1:6666';
     this.socket.connect(endpoint);
 
+    const formattedMessage = {
+      identity: this.uuid.toString(),
+      body: "GET",
+      type: "Oi",
+    };
+
+    // Send the formatted message as JSON to the ZeroMQ server
+    this.socket.send(JSON.stringify(formattedMessage));
+
     // Handle messages from the ZeroMQ server
     this.socket.on('message', (msg) => {
       const receivedMessage = JSON.parse(msg.toString());
