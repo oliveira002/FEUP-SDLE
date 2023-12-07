@@ -32,7 +32,7 @@ const allProducts = [
 
 const ShoppingList = () => {
     const [products, setProducts] = useState([]);
-    const [shoppingList, setShoppingList] = useState(null);
+        const [shoppingList, setShoppingList] = useState(null);
     const [shoppingLists, setShoppingLists] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const { id } = useParams(); // Get the ID from the URL
@@ -77,7 +77,7 @@ const ShoppingList = () => {
     const handleQuantityChange = (id, newQuantity) => {
       setProducts((prevProducts) =>
         prevProducts.map((product) =>
-          product.id === id ? { ...product, quantity: newQuantity } : product
+          product.id === id ? { ...product, quantity: parseInt(newQuantity) } : product
         )
       );
     };
@@ -93,11 +93,14 @@ const ShoppingList = () => {
     const handleAddProduct = (product) => {
       if (product) {
           const productExists = products.find(prod => prod.id === product.id);
-          if (!productExists || productExists.quantity === 0) {
+          if (!productExists) {
               product.quantity = 1;
-              const set = new Set(products);
-              set.add(product);
-              setProducts([...set]);
+              setProducts([...products, product]);
+             
+          }
+          else if(productExists.quantity === 0){
+              productExists.quantity = 1;
+              setProducts([...products]);
           }
       }
   };
