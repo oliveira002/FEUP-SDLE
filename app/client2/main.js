@@ -28,7 +28,7 @@ class Client {
   
       // Send the formatted message as JSON to the ZeroMQ server
     
-    this.socket.send(JSON.stringify(formattedMessage));
+    //this.socket.send(JSON.stringify(formattedMessage));
 
 
     this.socket.on('message', (msg) => {
