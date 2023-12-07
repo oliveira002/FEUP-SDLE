@@ -7,7 +7,20 @@ import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
 import { fetchShoppingLists } from "../shoppingListOperations";
 import ButtonGroup from '@mui/material/ButtonGroup';
 
+
 const Home = () => {
+
+    const { ipcRenderer } = window.require('electron');
+
+    ipcRenderer.send('frontMessage', {body: "shopping_list_1", type: "GET"});
+
+    // Listen for the response from the main process
+    ipcRenderer.on('zmqMessage', (event, information) => {
+        console.log(JSON.stringify(information))
+    // Do something with the information in your React component
+    });
+
+    
     const userid = 1;
     console.log("id", userid);
     const [shoppingListId, setShoppingListId] = useState('');
@@ -32,6 +45,8 @@ const Home = () => {
                 // Handle errors or display a message to the user
             }
         };
+
+        ipcRenderer.send('getInformation', 'some data');
   
         fetchData();
     }, []);

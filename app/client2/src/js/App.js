@@ -1,7 +1,7 @@
 import React from 'react';
 import {HashRouter,Route, Routes} from "react-router-dom";
-import Home from './Pages/Home';
-import ShoppingList from './Pages/ShoppingList';
+import Home from './pages/Home';
+import ShoppingList from './pages/ShoppingList';
 
 const App = ()=> {
   const d = 2;
