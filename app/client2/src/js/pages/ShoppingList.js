@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
 import { useParams } from 'react-router-dom'
-import { fetchShoppingLists } from "../shoppingListOperations";
+import { fetchShoppingLists } from "../utils";
 const allProducts = [
   {
     id: 1,
@@ -32,12 +32,12 @@ const allProducts = [
 
 const ShoppingList = () => {
     const [products, setProducts] = useState([]);
-        const [shoppingList, setShoppingList] = useState(null);
+    const [shoppingList, setShoppingList] = useState(null);
     const [shoppingLists, setShoppingLists] = useState(null);
     const [svShoppingList, setSvShoppingList] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const { id } = useParams(); // Get the ID from the URL
-    const userid = 1;
+    const userid = "5fb2f941-0c40-4aef-b48f-746540e3c723";
 
     const { ipcRenderer } = window.require('electron');
     
@@ -225,7 +225,7 @@ const ShoppingList = () => {
             <tfoot>
               <tr>
                 <td>
-                  <a href="#" className="btn btn-info text-white">
+                  <a href="#home" className="btn btn-info text-white">
                     Go Back
                   </a>
                 </td>

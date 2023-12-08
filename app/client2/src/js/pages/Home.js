@@ -4,14 +4,13 @@ import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
-import { fetchShoppingLists } from "../shoppingListOperations";
+import { fetchShoppingLists } from "../utils";
 import ButtonGroup from '@mui/material/ButtonGroup';
-
+const { ipcRenderer } = window.require('electron');
 
 const Home = () => {
 
-    const { ipcRenderer } = window.require('electron');
-
+   
     ipcRenderer.send('frontMessage', {body: "shopping_list_1", type: "GET"});
 
     // Listen for the response from the main process
@@ -21,8 +20,8 @@ const Home = () => {
     });
 
     
-    const userid = 1;
-    console.log("id", userid);
+    
+    const [userid, setUserid] = useState('');
     const [shoppingListId, setShoppingListId] = useState('');
     const [shoppingLists, setShoppingLists] = useState(null);
     if(shoppingLists){ 
@@ -37,19 +36,32 @@ const Home = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
+                console.log("userid", userid);
                 const data = await fetchShoppingLists(userid);
                 setShoppingLists(data);
-                                   
-               
             } catch (error) {
-                // Handle errors or display a message to the user
+                
             }
         };
-
-        ipcRenderer.send('getInformation', 'some data');
-  
-        fetchData();
-    }, []);
+    
+        const handleIdResponse = (event, id) => {
+            console.log('Received ID:', id);
+            setUserid(id);
+            fetchData(); 
+        };
+    
+        ipcRenderer.send('getId', 'get id');
+        ipcRenderer.on('getIdResponse', handleIdResponse);
+    
+        // Clean up the event listener when the component unmounts or when userid changes
+        return () => {
+            ipcRenderer.removeListener('getIdResponse', handleIdResponse);
+        };
+    }, [userid]); // Add userid as a dependency
+    
+    // Rest of your code...
+    
+    
 
   
     const handleNewList = () => {

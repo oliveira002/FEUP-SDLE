@@ -6,12 +6,13 @@ var json = require('json');
 
 
 
+
 class Client {
-  constructor(mainWindow) {
+  constructor(mainWindow, id) {
     // Create a REQ socket
     this.socket = new zmq.socket("req")
 
-    this.uuid = uuidv4();
+    this.uuid = id;
     this.socket.identity = 'Client-' + this.uuid.toString('ascii');
     
     this.identity = this.uuid.toString('ascii');
@@ -79,7 +80,7 @@ const createWindow = () => {
     // Send the information back to the renderer process
     mainWindow.webContents.send('informationResponse', information);
   });
-
+  let clientBackend;
   ipcMain.on('frontMessage', (event, message) => {
     // Handle the message from the renderer process
     console.log('Received message from frontend:', message);
@@ -93,8 +94,32 @@ const createWindow = () => {
     clientBackend.socket.send(JSON.stringify(formattedMessage));
   });
 
+  ipcMain.on('getId', (event, message) => {
+    // Handle the message from the renderer process
+    console.log('Received message from frontend:', message);
+  
+    const formattedMessage = {
+      id: clientBackend.uuid, 
+    };
+    console.log("formattedMessage", formattedMessage);
+    clientBackend.socket.send(JSON.stringify(formattedMessage));
+  });
+  ipcMain.on('getId', (event, information) => {
+    // Do something with the information
+    const id = clientBackend.uuid;
+    event.sender.send('getIdResponse', id); // Send a response back to the renderer
+  });
+  ipcMain.on('login', (event, message) => {
+    // Handle the message from the renderer process
+    console.log('Received message from frontend:', message);
+    
+      
+    clientBackend = new Client(mainWindow,message.body);
+    console.log("clientBackend", clientBackend);
+
+  });
+
   mainWindow.loadFile('index.html');
-  const clientBackend = new Client(mainWindow);
 
   // Create an instance of the Client class and pass the mainWindow reference
 
