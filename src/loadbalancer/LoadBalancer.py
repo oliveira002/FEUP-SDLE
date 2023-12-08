@@ -145,6 +145,7 @@ class LoadBalancer:
                 identity = frames[0].decode("utf-8")
                 message = json.loads(frames[1].decode("utf-8"))
                 logger.info(f"Received message \"{message}\" from {identity}")
+
                 self.lb_state.event = BinaryLBState.CLIENT_REQUEST
                 try:
                     run_fsm(self.lb_state)
