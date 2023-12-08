@@ -38,7 +38,7 @@ def run_fsm(lb_state: LoadbalancerState):
         raise BStarException(msg)
     elif msg == BinaryLBState.CLIENT_REQUEST:
         assert lb_state.peer_expiry > 0
-        if int(time.time() * 1000) > lb_state.peer_expiry:
+        if time.time() > lb_state.peer_expiry:
             lb_state.state = BinaryLBState.SELF_ACTIVE
         else:
             raise BStarException()
@@ -145,7 +145,6 @@ class LoadBalancer:
                 identity = frames[0].decode("utf-8")
                 message = json.loads(frames[1].decode("utf-8"))
                 logger.info(f"Received message \"{message}\" from {identity}")
-
                 self.lb_state.event = BinaryLBState.CLIENT_REQUEST
                 try:
                     run_fsm(self.lb_state)
@@ -161,7 +160,6 @@ class LoadBalancer:
 
             if self.frontend in sockets and sockets.get(self.frontend) == zmq.POLLIN:
                 frames = self.frontend.recv_multipart()
-                print(frames)
                 if not frames:
                     break
 
@@ -190,14 +188,18 @@ class LoadBalancer:
                         break
                 else:
                     nodes = list(msg['nodes'])
-                    new_ring = HashRing()
-                    new_ring.build_ring(nodes)
-                    self.ring = new_ring
-                    print(self.ring.nodes)
+                    if len(nodes) > 0 and nodes != self.ring.nodes:
+                        print(msg)
+                        new_ring = HashRing()
+                        new_ring.build_ring(nodes)
+                        self.ring = new_ring
 
             if time.time() >= send_state_at:
                 msg = {'state': self.lb_state.state, 'type': 'STATE'}
                 self.pub.send_json(msg)
+
+                if self.lb_state.state == BinaryLBState.SELF_ACTIVE:
+                    self.pub.send_json(self.ring.get_routing_table())
                 send_state_at = time.time() + HEARTBEAT_INTERVAL
 
             # self.ring.nodes.purge()
@@ -213,7 +215,7 @@ class LoadBalancer:
     def handle_server_message(self, identity, message):
         self.ring.add_node(identity)
         if message['type'] == ServerMsgType.CONNECT:
-            self.sync_routers()
+            #self.sync_routers()
             cur_ring_msg = self.ring.get_routing_table()
             request = [identity.encode("utf-8"), b"", b"", b"", json.dumps(cur_ring_msg).encode("utf-8")]
             self.backend.send_multipart(request)
