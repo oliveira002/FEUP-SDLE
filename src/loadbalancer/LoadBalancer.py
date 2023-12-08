@@ -149,7 +149,8 @@ class LoadBalancer:
                 self.lb_state.event = BinaryLBState.CLIENT_REQUEST
                 try:
                     run_fsm(self.lb_state)
-                    self.handle_server_message(identity, message)
+                    if self.lb_state.state != BinaryLBState.SELF_PASSIVE:
+                        self.handle_server_message(identity, message)
                 except BStarException:
                     del frames, identity, message
 
@@ -171,7 +172,8 @@ class LoadBalancer:
                 self.lb_state.event = BinaryLBState.CLIENT_REQUEST
                 try:
                     run_fsm(self.lb_state)
-                    self.handle_client_message(identity, message)
+                    if self.lb_state.state != BinaryLBState.SELF_PASSIVE:
+                        self.handle_client_message(identity, message)
                 except BStarException:
                     del frames, identity, message
 
@@ -201,6 +203,7 @@ class LoadBalancer:
 
                 if self.lb_state.state == BinaryLBState.SELF_ACTIVE:
                     self.pub.send_json(self.ring.get_routing_table())
+
                 send_state_at = time.time() + HEARTBEAT_INTERVAL
 
             # self.ring.nodes.purge()
