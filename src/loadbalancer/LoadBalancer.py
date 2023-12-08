@@ -192,7 +192,7 @@ class LoadBalancer:
 
     def handle_server_message(self, identity, message):
         self.ring.add_node(identity)
-        if message['type'] == "CONNECT":
+        if message['type'] == ServerMsgType.CONNECT:
             cur_ring_msg = self.ring.get_routing_table()
             request = [identity.encode("utf-8"), b"", b"", b"", json.dumps(cur_ring_msg).encode("utf-8")]
             self.backend.send_multipart(request)
