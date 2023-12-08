@@ -7,3 +7,4 @@ class ServerMsgType(str, Enum):
     HEARTBEAT = "HEARTBEAT"
     REPLICATE = "REPLICATE"
     ACK = "ACK"
+    REBALANCE = "REBALANCE"
