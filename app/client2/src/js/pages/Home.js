@@ -21,7 +21,7 @@ const Home = () => {
 
     
     
-    const [userid, setUserid] = useState('');
+    let userid = '';
     const [shoppingListId, setShoppingListId] = useState('');
     const [shoppingLists, setShoppingLists] = useState(null);
     if(shoppingLists){ 
@@ -35,6 +35,7 @@ const Home = () => {
 
     useEffect(() => {
         const fetchData = async () => {
+            console.log("fetching data");
             try {
                 console.log("userid", userid);
                 const data = await fetchShoppingLists(userid);
@@ -46,8 +47,12 @@ const Home = () => {
     
         const handleIdResponse = (event, id) => {
             console.log('Received ID:', id);
-            setUserid(id);
+           
+            console.log("2");
+            userid = id;
             fetchData(); 
+            
+         
         };
     
         ipcRenderer.send('getId', 'get id');
@@ -57,9 +62,8 @@ const Home = () => {
         return () => {
             ipcRenderer.removeListener('getIdResponse', handleIdResponse);
         };
-    }, [userid]); // Add userid as a dependency
-    
-    // Rest of your code...
+    }, []); 
+ 
     
     
 
@@ -94,15 +98,15 @@ const Home = () => {
                 orientation="vertical"
                 aria-label="vertical outlined button group"
             >
-            {shoppingLists && shoppingLists.ShoppingLists.map((shoppingList) => {
-                return (
-                    
-                        <Button key={shoppingList.uuid} onClick={() => navigate(`/shopping-list/${shoppingList.uuid}`)}>Shopping List ID: {shoppingList.uuid}</Button>
-                      
-                );
-
-            }
-            )}
+                {shoppingLists && shoppingLists.ShoppingLists && shoppingLists.ShoppingLists.length > 0 ? (
+                    shoppingLists.ShoppingLists.map((shoppingList) => (
+                        <Button key={shoppingList.uuid} onClick={() => navigate(`/shopping-list/${shoppingList.uuid}`)}>
+                            Shopping List ID: {shoppingList.uuid}
+                        </Button>
+                    ))
+                ) : (
+                    <p>No local shopping lists</p>
+                )}
             </ButtonGroup>
         </div>
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
 import { useParams } from 'react-router-dom'
-import { fetchShoppingLists } from "../utils";
+import { fetchShoppingLists, saveShoppingList } from "../utils";
 const allProducts = [
   {
     id: 1,
@@ -37,11 +37,32 @@ const ShoppingList = () => {
     const [svShoppingList, setSvShoppingList] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const { id } = useParams(); // Get the ID from the URL
-    const userid = "5fb2f941-0c40-4aef-b48f-746540e3c723";
+  
 
+    const [userid, setUserid] = useState(null);
     const { ipcRenderer } = window.require('electron');
+
+    useEffect(() => {
+  
+      const handleIdResponse = (event, id) => {
+          console.log('Received ID:', id);
+          setUserid(id);
+       
+      };
+  
+      ipcRenderer.send('getId', 'get id');
+      ipcRenderer.on('getIdResponse', handleIdResponse);
+  
+      
+      return () => {
+          ipcRenderer.removeListener('getIdResponse', handleIdResponse);
+      };
+  }, [userid]);
+    
     
     useEffect(() => {
+      if(userid == null) return;
+      console.log("id", userid);
       ipcRenderer.send('frontMessage', {body: id, type: "GET"});
 
       const fetchServerData = async () => {
@@ -52,6 +73,8 @@ const ShoppingList = () => {
             console.log(parsed)
           }
         });
+
+
       }
 
       const fetchData = async () => {
@@ -86,7 +109,7 @@ const ShoppingList = () => {
 
       fetchData();
       fetchServerData()
-  }, []);
+  }, [userid]);
     
     // Function to update quantity
     const handleQuantityChange = (id, newQuantity) => {
@@ -144,6 +167,23 @@ const ShoppingList = () => {
     const filteredProducts = products.filter((product) =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+    const saveToLocal = () => {
+      
+    
+      saveShoppingList(userid, id, { 
+        uuid: id,
+        items: products.reduce((acc, product) => {
+            acc[product.name] = {
+                quantity: product.quantity,
+                timestamps: {
+                    created: Date.now(),
+                }
+            };
+            return acc;
+        }, {})
+
+      });
+  };
 
   return (
     <div className="container main-section">
@@ -234,9 +274,9 @@ const ShoppingList = () => {
                   <strong>Total: <span className="total">{calculateTotal()}</span></strong>
                 </td>
                 <td>
-                  <a href="#" className="btn btn-success btn-block">
-                    Save
-                  </a>
+                      <button onClick={saveToLocal} className="btn btn-success btn-block">
+                            Local Save
+                      </button>
                 </td>
               </tr>
             </tfoot>

@@ -1,0 +1,15 @@
+{
+  "ShoppingLists": [
+    {
+      "uuid": "795",
+      "items": {
+        "ovos": {
+          "quantity": 1,
+          "timestamps": {
+            "created": 1702042889499
+          }
+        }
+      }
+    }
+  ]
+}

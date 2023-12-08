@@ -5,7 +5,7 @@ import ShoppingList from './pages/ShoppingList';
 import Login from './pages/Login';
 
 const App = ()=> {
-  return (
+  return ( 
     <HashRouter>
         <Routes>
             <Route path="/" element={<Login/>}/>
