@@ -146,7 +146,12 @@ class LoadBalancer:
                 message = json.loads(frames[1].decode("utf-8"))
                 logger.info(f"Received message \"{message}\" from {identity}")
 
-                self.handle_server_message(identity, message)
+                self.lb_state.event = BinaryLBState.CLIENT_REQUEST
+                try:
+                    run_fsm(self.lb_state)
+                    self.handle_server_message(identity, message)
+                except BStarException:
+                    del frames, identity, message
 
                 if time.time() >= heartbeat_at:
                     for server in self.ring.nodes:

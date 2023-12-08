@@ -61,9 +61,9 @@ class Client:
 
         self.retries_left = REQUEST_RETRIES
         while True:
-            #sockets = dict(self.poller.poll(REQUEST_TIMEOUT * 1000))
-            if (self.socket.poll(REQUEST_TIMEOUT * 1000) & zmq.POLLIN) != 0:
-            #if self.socket in sockets and sockets.get(self.socket) == zmq.POLLIN:
+            sockets = dict(self.poller.poll(REQUEST_TIMEOUT * 1000))
+            #if (self.socket.poll(REQUEST_TIMEOUT * 1000) & zmq.POLLIN) != 0:
+            if self.socket in sockets and sockets.get(self.socket) == zmq.POLLIN:
                 message = self.receive_message()
                 message = self.handle_message(message)
                 if message:
