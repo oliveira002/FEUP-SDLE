@@ -6,7 +6,7 @@ from uuid import *
 import sys
 import hashlib
 from src.loadbalancer.HashRing import HashRing
-
+from hashlib import sha256
 from src.common.ClientMsgType import ClientMsgType
 from src.common.LoadbalMsgType import LoadbalMsgType
 from src.common.ServerMsgType import ServerMsgType
@@ -41,12 +41,14 @@ class Server:
         self.port = int(port)
         self.hostname = f"127.0.0.1:{self.port}"
         self.server_nr = 0
+        self.identity = None
         self.context = zmq.Context()
 
     def init_sockets(self):
         self.socket = self.context.socket(zmq.DEALER)
         self.socket_neigh = self.context.socket(zmq.DEALER)
         self.socket.identity = u"Server@{}".format(str(self.hostname)).encode("ascii")
+        self.identity = u"Server@{}".format(str(self.hostname))
         self.socket_neigh.identity = u"Server2@{}".format(str(self.hostname)).encode("ascii")
 
         self.poller = zmq.Poller()
@@ -155,18 +157,34 @@ class Server:
             merged = self.persist_to_json(shopping_list)
             self.send_message(self.socket, "Modified Shopping List Correctly", ServerMsgType.REPLY, identity)
             _, neighbours = self.ring.get_server(shopping_list['uuid'])
-            self.replicate_data(neighbours, merged)
+            #self.replicate_data(neighbours, merged)
 
         elif message["type"] == LoadbalMsgType.HEARTBEAT:
             logger.info("Received load balancer heartbeat")
             pass
 
         elif message['type'] == ServerMsgType.REPLICATE:
-            self.persist_to_json(message['body'])
+            print(message)
+            #self.persist_to_json(message['body'])
+
+        elif message['type'] == ServerMsgType.REBALANCE:
+            shopping_lists = message['body']
+
+            print(type(shopping_lists))
+
+            for sl in shopping_lists:
+                self.persist_to_json(sl)
+
+            #self.persist_to_json(message['body'])
 
         elif message['type'] == "JOIN_RING":
             print(message)
-            self.ring.add_node(message['node'])
+            updates = self.ring.add_node(message['node'])
+
+            #print(list(self.ring.ring.keys()))
+            #print(list(self.ring.ring.values()))
+
+            self.send_data_on_join(updates)
 
         elif message['type'] == "RING":
             nodes = list(message['nodes'])
@@ -193,15 +211,59 @@ class Server:
             logger.error("Error receiving message:", e)
             return None
 
-    def persist_to_json(self, new_object):
+    def send_data_on_join(self, update_info):
+        update_info = [x for x in update_info if x['send'] == self.identity]
+        print(update_info)
+        for update in update_info:
+            receiver = update['receive'].split('@', 1)[-1]
+            shopping_lists = self.get_shopping_lists_range(update['content'][0], update['content'][1])
+
+            print(shopping_lists)
+
+            if len(shopping_lists) == 0:
+                continue
+
+            try:
+                self.socket_neigh.connect(f'tcp://{receiver}')
+                self.send_message(self.socket_neigh, shopping_lists, ServerMsgType.REBALANCE)
+
+            except Exception as e:
+                logger.error(f"Failed to connect to {receiver}: {e}")
+
+
+
+    def get_shopping_lists_range(self, min_hash, max_hash):
+        data = self.create_or_load_db_file()
+
+        if max_hash == -1:
+            filtered_lists = [shopping_list for shopping_list in data['ShoppingLists']
+                              if min_hash < self.hash_function(shopping_list['uuid'])]
+            return filtered_lists
+
+        filtered_lists = [shopping_list for shopping_list in data['ShoppingLists']
+                          if min_hash < self.hash_function(shopping_list['uuid']) < max_hash]
+
+        return filtered_lists
+
+    def create_or_load_db_file(self):
         file_path = f"shoppinglists/{self.port}.json"
+
         try:
-            # Load existing data from the file
             with open(file_path, 'r') as file:
                 data = json.load(file)
         except FileNotFoundError:
             # If the file doesn't exist, create an empty dictionary
             data = {"ShoppingLists": []}
+
+        with open(file_path, 'w') as file:
+            json.dump(data, file, indent=2)
+
+        return data
+
+    def persist_to_json(self, new_object):
+        file_path = f"shoppinglists/{self.port}.json"
+
+        data = self.create_or_load_db_file()
 
         # Check if the given JSON object exists in the list by uuid
         existing_list = data.get("ShoppingLists", [])
@@ -231,10 +293,12 @@ class Server:
         self.kill_sockets()
         self.context.term()
 
+    def hash_function(self, key):
+        return sha256(key.encode('utf-8')).hexdigest()
 
 def main():
     #server = Server(int(sys.argv[1]))
-    server = Server(1231)
+    server = Server(1232)
     server.start()
     server.stop()
 

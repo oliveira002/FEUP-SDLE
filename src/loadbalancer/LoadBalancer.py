@@ -189,9 +189,6 @@ class LoadBalancer:
                     self.ring = new_ring
                     print(self.ring.nodes)
 
-
-
-
             if time.time() >= send_state_at:
                 msg = {'state': self.lb_state.state, 'type': 'STATE'}
                 self.pub.send_json(msg)
