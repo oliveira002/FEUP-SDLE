@@ -36,4 +36,13 @@ html {
     height: 3rem;
     
   }
+
+  button.sync{
+    white-space: nowrap;
+
+  }
+  td,th{
+    text-align: center;
+  }
+
   

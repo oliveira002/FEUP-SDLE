@@ -94,16 +94,6 @@ const createWindow = () => {
     clientBackend.socket.send(JSON.stringify(formattedMessage));
   });
 
-  ipcMain.on('getId', (event, message) => {
-    // Handle the message from the renderer process
-    console.log('Received message from frontend:', message);
-  
-    const formattedMessage = {
-      id: clientBackend.uuid, 
-    };
-    console.log("formattedMessage", formattedMessage);
-    clientBackend.socket.send(JSON.stringify(formattedMessage));
-  });
   ipcMain.on('getId', (event, information) => {
     // Do something with the information
     const id = clientBackend.uuid;

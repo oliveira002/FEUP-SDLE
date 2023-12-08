@@ -11,7 +11,7 @@ const { ipcRenderer } = window.require('electron');
 const Home = () => {
 
    
-    ipcRenderer.send('frontMessage', {body: "shopping_list_1", type: "GET"});
+    //ipcRenderer.send('frontMessage', {body: "shopping_list_1", type: "GET"});
 
     // Listen for the response from the main process
     ipcRenderer.on('zmqMessage', (event, information) => {
@@ -19,11 +19,13 @@ const Home = () => {
     // Do something with the information in your React component
     });
 
-    
+
+    console.log("username", localStorage.getItem("username"));
     
     let userid = '';
     const [shoppingListId, setShoppingListId] = useState('');
     const [shoppingLists, setShoppingLists] = useState(null);
+    const [username, setUsername] = useState(localStorage.getItem("username"));
     if(shoppingLists){ 
         shoppingLists.ShoppingLists.map((shoppingList) => {
             console.log("shoppingList", shoppingList);
@@ -83,6 +85,8 @@ const Home = () => {
     };
 
     const handleShopingList = () => {
+
+        
         console.log("shoppingListId", shoppingListId);
         navigate(`/shopping-list/${shoppingListId}`);
     }
@@ -91,7 +95,7 @@ const Home = () => {
     return (
         <div>
         <AddShoppingCartIcon sx={{ fontSize: 40 }}/>
-        <h1>Welcome!</h1>
+        <h1>Welcome {username}!</h1>
         <div className="shopping-lists home-button">
             <h3 >My Shopping Lists</h3>
             <ButtonGroup

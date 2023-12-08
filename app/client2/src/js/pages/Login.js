@@ -11,16 +11,20 @@ const Login = () => {
         e.preventDefault();
         try {
             let user = await checkLogin(username);
-            console.log("1")
+
             if (user) {
-                console.log("2")
+   
                 setSvLogin("Login successful!");
                 console.log(user.id)
                 ipcRenderer.send('login', {body: user.id, type: "LOGIN"});
+                localStorage.setItem("userid", user.id);
+                localStorage.setItem("username", user.username);
                 navigate('/home'); 
+
             } else {
                 setSvLogin("Creating a new user!");
-                console.log("3")
+                //navigate('/home'); 
+
             }
         } catch (error) {
             console.error(error);
