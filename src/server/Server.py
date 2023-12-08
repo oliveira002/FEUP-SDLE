@@ -171,8 +171,7 @@ class Server:
         elif message['type'] == "RING":
             nodes = list(message['nodes'])
             self.ring = HashRing()
-            for server in nodes:
-                self.ring.add_node(server)
+            self.ring.build_ring(nodes)
 
         elif message['type'] == "LEAVE_RING":
             print(message)
@@ -235,7 +234,7 @@ class Server:
 
 def main():
     #server = Server(int(sys.argv[1]))
-    server = Server(1228)
+    server = Server(1231)
     server.start()
     server.stop()
 

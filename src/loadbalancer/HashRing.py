@@ -52,14 +52,20 @@ class HashRing:
 
         return coordinator_identity, neighbours
 
+    def build_ring(self, routing_table):
+        for x in routing_table:
+            self.add_node(x)
+
     def node_range(self, hashed_key, n=NUM_REPLICAS - 1):
         keys = list(self.ring.keys())
-        keys.extend(keys[:n])
+        total_keys = len(keys)
 
-        index = keys.index(hashed_key)
-        next_elements = keys[index + 1:index + 1 + n]
+        start_index = keys.index(hashed_key) + 1
+        all_neighbours = keys[start_index:] + keys[:start_index]
 
-        return next_elements
+        all_neighbours.remove(hashed_key)
+
+        return all_neighbours
 
     def __str__(self):
         serialized_data = {
