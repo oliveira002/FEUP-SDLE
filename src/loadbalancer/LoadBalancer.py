@@ -38,7 +38,7 @@ def run_fsm(lb_state: LoadbalancerState):
         raise BStarException(msg)
     elif msg == BinaryLBState.CLIENT_REQUEST:
         assert lb_state.peer_expiry > 0
-        if int(time.time() * 1000) > lb_state.peer_expiry:
+        if int(time.time()) > lb_state.peer_expiry:
             lb_state.state = BinaryLBState.SELF_ACTIVE
         else:
             raise BStarException()
