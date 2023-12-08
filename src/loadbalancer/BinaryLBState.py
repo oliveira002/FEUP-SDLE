@@ -1,20 +1,19 @@
-from time import time
-from enum import IntEnum
+from enum import Enum
 
 
-class BinaryLBState(IntEnum):
-    NONE = 0
+class BinaryLBState(str, Enum):
+    NONE = "NONE"
 
-    SELF_PRIMARY = 1
-    SELF_BACKUP = 2
-    SELF_ACTIVE = 3
-    SELF_PASSIVE = 4
+    SELF_PRIMARY = "PRIMARY"
+    SELF_BACKUP = "BACKUP"
+    SELF_ACTIVE = "ACTIVE"
+    SELF_PASSIVE = "PASSIVE"
 
-    PEER_PRIMARY = 1
-    PEER_BACKUP = 2
-    PEER_ACTIVE = 3
-    PEER_PASSIVE = 4
-    CLIENT_REQUEST = 5
+    PEER_PRIMARY = "PRIMARY"
+    PEER_BACKUP = "BACKUP"
+    PEER_ACTIVE = "ACTIVE"
+    PEER_PASSIVE = "PASSIVE"
+    CLIENT_REQUEST = "CLIENT_REQUEST"
 
 
 lbfsm_state_map = {

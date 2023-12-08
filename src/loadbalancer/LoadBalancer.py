@@ -173,7 +173,6 @@ class LoadBalancer:
             if self.sub in sockets and sockets.get(self.sub) == zmq.POLLIN:
                 msg = self.sub.recv().decode("utf-8")
                 msg = json.loads(msg)
-                print(msg)
 
                 if msg['type'] == "STATE":
                     self.lb_state.event = msg['state']
@@ -260,10 +259,15 @@ class LoadBalancer:
 
 
 def main():
-    roles = ["primary", "backup"]
+    roles = ["primary", "backup", "p", "b"]
     role = None
     while role not in roles:
         role = str(input("Choose a role between \"primary\" and \"backup\": "))
+
+    if role == "p":
+        role = "primary"
+    elif role == "b":
+        role = "backup"
 
     loadbalancer = LoadBalancer(role)
     loadbalancer.start()
