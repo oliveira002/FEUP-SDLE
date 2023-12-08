@@ -1,0 +1,71 @@
+{
+  "ShoppingLists": [
+    {
+      "uuid": "e2ee4e97-bba0-4366-b40b-8f73d49fb33e",
+      "items": {
+        "bananas": {
+          "quantity": 3,
+          "timestamps": {
+            "1231-31-23123-12-33": 2
+          }
+        },
+        "cebolas": {
+          "quantity": 1,
+          "timestamps": {
+            "1231-31-23123-12-33": 2
+          }
+        }
+      }
+    },
+    {
+      "uuid": "e83fea8c-8757-4356-8555-4f990b1feec0",
+      "items": {
+        "bananas": {
+          "quantity": 3,
+          "timestamps": {
+            "1231-31-23123-12-33": 2
+          }
+        },
+        "cebolas": {
+          "quantity": 1,
+          "timestamps": {
+            "1231-31-23123-12-33": 2
+          }
+        }
+      }
+    },
+    {
+      "uuid": "274",
+      "items": {
+        "ovos": {
+          "quantity": 1,
+          "timestamps": {
+            "created": 1702042214279
+          }
+        }
+      }
+    },
+    {
+      "uuid": "924",
+      "items": {
+        "ovos": {
+          "quantity": 1,
+          "timestamps": {
+            "created": 1702042825048
+          }
+        }
+      }
+    },
+    {
+      "uuid": "616",
+      "items": {
+        "bananas": {
+          "quantity": 1,
+          "timestamps": {
+            "created": 1702043859211
+          }
+        }
+      }
+    }
+  ]
+}

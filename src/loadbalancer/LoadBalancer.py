@@ -156,6 +156,7 @@ class LoadBalancer:
 
             if self.frontend in sockets and sockets.get(self.frontend) == zmq.POLLIN:
                 frames = self.frontend.recv_multipart()
+                print(frames)
                 if not frames:
                     break
 
@@ -221,6 +222,7 @@ class LoadBalancer:
             pass
 
     def handle_client_message(self, identity, message):
+        print(message)
         shopping_list = message['body']
 
         if message['type'] == ClientMsgType.POST:

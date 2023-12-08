@@ -8,6 +8,9 @@ module.exports = {
   entry: './src/js/index.js',
   devtool: 'inline-source-map',
   target: 'electron-renderer',
+  node: {
+    __dirname: true
+    },
   module: {
     rules: [
       {

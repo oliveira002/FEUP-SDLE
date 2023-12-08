@@ -1,0 +1,21 @@
+{
+  "ShoppingLists": [
+    {
+      "uuid": "751",
+      "items": {
+        "ovos": {
+          "quantity": 1,
+          "timestamps": {
+            "created": 1702043177463
+          }
+        },
+        "cebolas": {
+          "quantity": 1,
+          "timestamps": {
+            "created": 1702043177463
+          }
+        }
+      }
+    }
+  ]
+}
