@@ -61,7 +61,6 @@ class LoadBalancer:
         self.lb_state = LoadbalancerState(BinaryLBState.NONE, 0, 0)
 
     def init_sockets(self):
-
         self.pub = self.context.socket(zmq.PUB)
         self.sub = self.context.socket(zmq.SUB)
         self.sub.setsockopt_string(zmq.SUBSCRIBE, u"")
@@ -133,12 +132,11 @@ class LoadBalancer:
         heartbeat_at = time.time() + HEARTBEAT_INTERVAL
         send_state_at = time.time() + HEARTBEAT_INTERVAL
         while True:
-            if len(self.ring.nodes) > 0:
-                poller = self.all_poller
-            else:
-                poller = self.server_poller
+            #if len(self.ring.nodes) > 0:
+            poller = self.all_poller
+            #else:
+             #   poller = self.server_poller
             sockets = dict(poller.poll(HEARTBEAT_INTERVAL * 1000))
-
             if self.backend in sockets and sockets.get(self.backend) == zmq.POLLIN:
                 frames = self.backend.recv_multipart()
                 if not frames:

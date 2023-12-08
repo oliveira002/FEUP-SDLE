@@ -17,12 +17,15 @@ script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
 logger = setup_logger(script_filename)
 
 # Macros
-BROKER_ENDPOINT_1 = '127.0.0.1:7777'
-BROKER_ENDPOINT_2 = '127.0.0.1:7778'
+PRIMARY_BACKEND_ENDPOINT = '127.0.0.1:7000'
+BACKUP_BACKEND_ENDPOINT = '127.0.0.1:7001'
+SERVERS = [PRIMARY_BACKEND_ENDPOINT, BACKUP_BACKEND_ENDPOINT]
 HEARTBEAT_LIVENESS = 3
 HEARTBEAT_INTERVAL = 1
 INTERVAL_INIT = 1
 INTERVAL_MAX = 32
+REQUEST_TIMEOUT = 2500
+FAILOVER_DELAY = 5000
 
 
 class Server:
@@ -37,6 +40,7 @@ class Server:
         self.generate_id()
         self.port = int(port)
         self.hostname = f"127.0.0.1:{self.port}"
+        self.server_nr = 0
         self.context = zmq.Context()
 
     def init_sockets(self):
@@ -49,7 +53,7 @@ class Server:
         self.poller.register(self.socket, zmq.POLLIN)
         self.poller.register(self.socket_neigh, zmq.POLLIN)
 
-        self.socket.connect(f'tcp://{BROKER_ENDPOINT_1}')
+        self.socket.connect(f'tcp://{SERVERS[self.server_nr]}')
         self.socket_neigh.bind(f'tcp://{self.hostname}')
 
     def kill_sockets(self):
@@ -64,7 +68,7 @@ class Server:
 
     def start(self):
         self.init_sockets()
-        logger.info(f"Connecting to broker at {BROKER_ENDPOINT_1}")
+        logger.info(f"Connecting to broker at {SERVERS[self.server_nr]}")
 
         self.send_message(self.socket, "Connecting", ServerMsgType.CONNECT, str(self.hostname))
 
@@ -154,7 +158,7 @@ class Server:
             self.replicate_data(neighbours, merged)
 
         elif message["type"] == LoadbalMsgType.HEARTBEAT:
-            # logger.info("Received load balancer heartbeat")
+            logger.info("Received load balancer heartbeat")
             pass
 
         elif message['type'] == ServerMsgType.REPLICATE:
