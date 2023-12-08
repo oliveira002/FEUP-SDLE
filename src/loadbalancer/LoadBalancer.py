@@ -38,8 +38,10 @@ def run_fsm(lb_state: LoadbalancerState):
         raise BStarException(msg)
     elif msg == BinaryLBState.CLIENT_REQUEST:
         assert lb_state.peer_expiry > 0
+
         if int(time.time() * 1000) > lb_state.peer_expiry:
             lb_state.state = BinaryLBState.SELF_ACTIVE
+
         else:
             raise BStarException()
     else:
@@ -171,17 +173,31 @@ class LoadBalancer:
                     del frames, identity, message
 
             if self.sub in sockets and sockets.get(self.sub) == zmq.POLLIN:
-                msg = self.sub.recv()
-                self.lb_state.event = int(msg)
-                del msg
-                try:
-                    run_fsm(self.lb_state)
-                    self.lb_state.peer_expiry = time.time() + (2 * HEARTBEAT_INTERVAL)
-                except BStarException:
-                    break
+                msg = self.sub.recv().decode("utf-8")
+                msg = json.loads(msg)
+                print(msg)
+
+                if msg['type'] == "STATE":
+                    self.lb_state.event = msg['state']
+                    del msg
+                    try:
+                        run_fsm(self.lb_state)
+                        self.lb_state.peer_expiry = time.time() + (2 * HEARTBEAT_INTERVAL)
+                    except BStarException:
+                        break
+                else:
+                    nodes = list(msg['nodes'])
+                    new_ring = HashRing()
+                    new_ring.build_ring(nodes)
+                    self.ring = new_ring
+                    print(self.ring.nodes)
+
+
+
 
             if time.time() >= send_state_at:
-                self.pub.send_string("%d" % self.lb_state.state)
+                msg = {'state': self.lb_state.state, 'type': 'STATE'}
+                self.pub.send_json(msg)
                 send_state_at = time.time() + HEARTBEAT_INTERVAL
 
             # self.ring.nodes.purge()
@@ -190,9 +206,16 @@ class LoadBalancer:
         self.kill_sockets()
         self.context.term()
 
+    def sync_routers(self):
+
+        routing_table = self.ring.get_routing_table()
+
+        self.pub.send_json(routing_table)
+
     def handle_server_message(self, identity, message):
         self.ring.add_node(identity)
         if message['type'] == "CONNECT":
+            self.sync_routers()
             cur_ring_msg = self.ring.get_routing_table()
             request = [identity.encode("utf-8"), b"", b"", b"", json.dumps(cur_ring_msg).encode("utf-8")]
             self.backend.send_multipart(request)
