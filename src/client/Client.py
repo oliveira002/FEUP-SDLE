@@ -14,10 +14,12 @@ script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
 logger = setup_logger(script_filename)
 
 # Macros
-BROKER_ENDPOINT_1 = '127.0.0.1:6666'
-BROKER_ENDPOINT_2 = '127.0.0.1:6667'
+PRIMARY_FRONTEND_ENDPOINT = '127.0.0.1:6000'
+BACKUP_FRONTEND_ENDPOINT = '127.0.0.1:6001'
+SERVERS = [PRIMARY_FRONTEND_ENDPOINT, BACKUP_FRONTEND_ENDPOINT]
 REQUEST_TIMEOUT = 2500
 REQUEST_RETRIES = sys.maxsize
+FAILOVER_DELAY = 5000
 
 
 class Client:
@@ -26,12 +28,13 @@ class Client:
         self.retries_left = None
         self.socket = None
         self.id = uuid4()
+        self.server_nr = 0
         self.context = zmq.Context()
     
     def init_socket(self):
         self.socket = self.context.socket(zmq.REQ)
         self.socket.identity = u"Client-{}".format(str(self.id)).encode("ascii")
-        self.socket.connect(f'tcp://{BROKER_ENDPOINT_1}')
+        self.socket.connect(f'tcp://{SERVERS[self.server_nr]}')
     
     def kill_socket(self):
         self.socket.setsockopt(zmq.LINGER, 0)
@@ -39,7 +42,7 @@ class Client:
     
     def start(self):
         self.init_socket()
-        logger.info(f"Connecting to broker at {BROKER_ENDPOINT_1}")
+        logger.info(f"Connecting to broker at {PRIMARY_FRONTEND_ENDPOINT}")
 
         sl = ShoppingList()
         sl.inc_or_add_item("bananas", 1, "1231-31-23123-12-33")
