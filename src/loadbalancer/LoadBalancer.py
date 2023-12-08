@@ -189,9 +189,6 @@ class LoadBalancer:
                     self.ring = new_ring
                     print(self.ring.nodes)
 
-
-
-
             if time.time() >= send_state_at:
                 msg = {'state': self.lb_state.state, 'type': 'STATE'}
                 self.pub.send_json(msg)
@@ -230,10 +227,15 @@ class LoadBalancer:
             shopping_list = json.loads(shopping_list)['uuid']
 
         value, neighbours = self.ring.get_server(shopping_list)
+        if value is None and neighbours is None:
+            message = format_msg("BROKER", "Servers offline", LoadbalMsgType.SV_OFFLINE)
+            self.frontend.send_multipart([identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")])
+            return
 
         request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
 
         self.backend.send_multipart(request)
+
 
         # expected an ACK after sending request to know it worked, add a timeout for the message to come (?)
         # print(self.backend.recv_multipart())

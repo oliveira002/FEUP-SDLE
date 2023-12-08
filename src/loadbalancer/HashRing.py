@@ -36,6 +36,10 @@ class HashRing:
         return
 
     def get_server(self, shopping_list_id, num_keys=NUM_REPLICAS):
+
+        if len(self.nodes) == 0:
+            return None, None
+
         hashed = hash_function(shopping_list_id)
         keys = list(self.ring.keys())
         index = bisect.bisect_left(keys, hashed)

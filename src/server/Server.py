@@ -24,8 +24,8 @@ HEARTBEAT_LIVENESS = 3
 HEARTBEAT_INTERVAL = 1
 INTERVAL_INIT = 1
 INTERVAL_MAX = 32
-REQUEST_TIMEOUT = 2500
-FAILOVER_DELAY = 5000
+REQUEST_TIMEOUT = 1
+FAILOVER_DELAY = 2
 
 
 class Server:
@@ -97,11 +97,10 @@ class Server:
                 self.loadbalLiveness -= 1
                 if self.loadbalLiveness == 0:
                     logger.warning("Heartbeat failure, can't reach load balancer")
-                    logger.warning("Reconnecting in %0.2fs..." % interval)
-                    time.sleep(interval)
+                    logger.warning("Failing over in %0.2fs..." % FAILOVER_DELAY)
+                    time.sleep(FAILOVER_DELAY)
 
-                    if interval < INTERVAL_MAX:
-                        interval *= 2
+                    self.server_nr = (self.server_nr + 1) % 2
                     self.kill_sockets()
                     self.init_sockets()
                     self.loadbalLiveness = HEARTBEAT_LIVENESS
