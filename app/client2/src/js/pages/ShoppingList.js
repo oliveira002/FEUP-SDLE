@@ -32,11 +32,14 @@ const allProducts = [
 
 const ShoppingList = () => {
     const [products, setProducts] = useState([]);
+    const [initialProducts, setInitialProducts] = useState([]);
     const [shoppingList, setShoppingList] = useState(null);
     const [shoppingLists, setShoppingLists] = useState(null);
     const [svShoppingList, setSvShoppingList] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const { id } = useParams(); // Get the ID from the URL
+    console.log(products)
+    console.log(initialProducts)
   
 
     const [userid, setUserid] = useState(null);
@@ -62,7 +65,7 @@ const ShoppingList = () => {
     
     useEffect(() => {
       if(userid == null) return;
-      console.log("id", userid);
+
       ipcRenderer.send('frontMessage', {body: id, type: "GET"});
 
       const fetchServerData = async () => {
@@ -82,21 +85,24 @@ const ShoppingList = () => {
               const data = await fetchShoppingLists(userid);
               setShoppingLists(data);
               if(data){
+                
 
                   data.ShoppingLists.map((shoppingList) => {
-                    console.log("shoppingList", shoppingList);
+
                       if(shoppingList.uuid === id){
-                          console.log("shoppingList", shoppingList.items);
                           setShoppingList(shoppingList);
+                          
 
                           const itemsArray = Object.entries(shoppingList.items).map(([name, details]) => ({
                             id: allProducts.find((product) => product.name === name).id,
                           
                             name: name,
                             quantity: details.quantity,
+                            timestamps: details.timestamps
                         }));
-                          console.log("itemsArray", itemsArray);
+
                           setProducts(itemsArray);
+                          setInitialProducts(itemsArray);
                           
                       }
                   })
@@ -133,11 +139,17 @@ const ShoppingList = () => {
           const productExists = products.find(prod => prod.id === product.id);
           if (!productExists) {
               product.quantity = 1;
+              product.timestamps = {
+                [userid]: 0,
+              }
               setProducts([...products, product]);
              
           }
           else if(productExists.quantity === 0){
               productExists.quantity = 1;
+              productExists.timestamps = {
+                [userid]: Object.entries(productExists.timestamps)[0][1],
+              }
               setProducts([...products]);
           }
       }
@@ -167,16 +179,41 @@ const ShoppingList = () => {
     const filteredProducts = products.filter((product) =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    const saveToLocal = () => {
+    if(products[0]){
+      console.log(Object.entries(products[0].timestamps)[0][0])
+    }
+    let new_items = []
+    for (let i = 0; i < products.length; i++) {
+      new_items.push({
+        name: products[i].name,
+        quantity: products[i].quantity,
+        timestamps: {
+          [userid]: Object.entries(products[i].timestamps)[0][1] + 1,
+        }
+      })
+    }
       
+    console.log(new_items)
+    const saveToLocal = () => {
     
       saveShoppingList(userid, id, { 
         uuid: id,
         items: products.reduce((acc, product) => {
+            const currentTimestamp = Object.entries(product.timestamps)[0][1];
+            let updatedTimestamp;
+            if(initialProducts.find((prod) => prod.id === product.id)){
+              updatedTimestamp = product.quantity !== initialProducts.find((prod) => prod.id === product.id).quantity ? currentTimestamp + 1 : currentTimestamp;
+            }
+            else{
+              updatedTimestamp = currentTimestamp + 1;
+            }
+            
+            console.log(product.name, updatedTimestamp)
+    
             acc[product.name] = {
                 quantity: product.quantity,
                 timestamps: {
-                    created: Date.now(),
+                  [userid]: updatedTimestamp,
                 }
             };
             return acc;
@@ -220,7 +257,8 @@ const ShoppingList = () => {
               <tr>
                 <th>Product</th>
                 <th style={{ width: "10%" }}>Quantity</th>
-                <th>Subtotal</th>
+              
+                <th>Version</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -247,8 +285,9 @@ const ShoppingList = () => {
                       }
                     />
                   </td>
-                  <td className="subtotal">
-                    {calculateSubtotal(product)}
+                  
+                  <td className="version" data-th="" style={{ width: "10%" }}>
+                    {Object.entries(product.timestamps)[0][1]}
                   </td>
                   <td className="actions" data-th="" style={{ width: "10%" }}>
                     
@@ -259,6 +298,7 @@ const ShoppingList = () => {
                             <FontAwesomeIcon icon={faTrash} />
                         </button>
                   </td>
+                 
                 </tr>
               ))}
             </tbody>
@@ -269,15 +309,21 @@ const ShoppingList = () => {
                     Go Back
                   </a>
                 </td>
-                <td colSpan="1" className="hidden-xs"></td>
-                <td className="hidden-xs text-center" style={{ width: "10%" }}>
+       
+                <td colSpan="1" className="hidden-xs text-center" style={{ width: "10%" }}>
                   <strong>Total: <span className="total">{calculateTotal()}</span></strong>
                 </td>
                 <td>
-                      <button onClick={saveToLocal} className="btn btn-success btn-block">
+                      <button onClick={saveToLocal} className="btn btn-success btn-block sync">
                             Local Save
                       </button>
                 </td>
+                <td>
+                      <button  className="btn btn-secondary btn-block sync">
+                            Sync Server
+                      </button>
+                </td>
+
               </tr>
             </tfoot>
           </table>

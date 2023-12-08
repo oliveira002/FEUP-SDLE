@@ -1,6 +1,8 @@
 const fs = require('fs');
 const fileName = './db/users.json';
 
+const { v4: uuidv4 } = require('uuid');
+
 export const fetchShoppingLists = async (userId) => {
     try {
         const response = await fetch(`./db/${userId}/shoppinglists.json`);
@@ -28,7 +30,7 @@ export const checkLogin = async (username) => {
                 // Create new user
                 let newUser = {
                     username: username,
-                    id: String(Date.now()),
+                    id: String(uuidv4()),
                 }
                 users.users.push(newUser);
                 fs.writeFile(fileName, JSON.stringify(users), function writeJSON(err) {
