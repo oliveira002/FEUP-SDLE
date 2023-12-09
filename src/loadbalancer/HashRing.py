@@ -11,9 +11,7 @@ NUM_REPLICAS = 3
 
 
 def hash_function(key):
-    hash_value = sha256(key.encode('utf-8')).hexdigest()
-    #integer_hash = int(hash_value, 16)
-    return hash_value
+    return sha256(key.encode('utf-8')).hexdigest()
 
 
 class HashRing:
@@ -60,7 +58,14 @@ class HashRing:
         neighbours = self.node_range(coordinator_key)
 
         neighbours = [self.ring[x] for x in neighbours if self.ring[x] != coordinator_identity]
-        neighbours = list(set(neighbours))
+
+        unique_list = []
+
+        for item in neighbours:
+            if item not in unique_list:
+                unique_list.append(item)
+
+        neighbours = unique_list
 
         return coordinator_identity, neighbours
 
@@ -114,8 +119,3 @@ class HashRing:
         return msg
 
 
-
-#hash_ring = HashRing()
-#msg_1 = hash_ring.add_node("1")
-#msg_2 = hash_ring.add_node("2")
-#a = 2

@@ -31,6 +31,7 @@ FAILOVER_DELAY = 2
 class Server:
 
     def __init__(self, port):
+        self.socket_handoff = None
         self.socket_neigh = None
         self.ring = None
         self.loadbalLiveness = HEARTBEAT_LIVENESS
@@ -40,6 +41,7 @@ class Server:
         self.generate_id()
         self.port = int(port)
         self.hostname = f"127.0.0.1:{self.port}"
+        self.handoff_host = f"127.0.0.2:{self.port}"
         self.server_nr = 0
         self.identity = None
         self.context = zmq.Context()
@@ -47,26 +49,34 @@ class Server:
     def init_sockets(self):
         self.socket = self.context.socket(zmq.DEALER)
         self.socket_neigh = self.context.socket(zmq.DEALER)
+        self.socket_handoff = self.context.socket(zmq.DEALER)
+
         self.socket.identity = u"Server@{}".format(str(self.hostname)).encode("ascii")
-        self.identity = u"Server@{}".format(str(self.hostname))
+        self.socket_handoff.identity = u"Server@{}".format(str(self.handoff_host)).encode("ascii")
         self.socket_neigh.identity = u"Server2@{}".format(str(self.hostname)).encode("ascii")
+        self.identity = u"Server@{}".format(str(self.hostname))
 
         self.poller = zmq.Poller()
         self.poller.register(self.socket, zmq.POLLIN)
         self.poller.register(self.socket_neigh, zmq.POLLIN)
+        self.poller.register(self.socket_handoff, zmq.POLLIN)
 
         self.socket.connect(f'tcp://{SERVERS[self.server_nr]}')
         self.socket_neigh.bind(f'tcp://{self.hostname}')
+        self.socket_handoff.bind(f'tcp://{self.handoff_host}')
 
     def kill_sockets(self):
         self.poller.unregister(self.socket)
         self.poller.unregister(self.socket_neigh)
+        self.poller.unregister(self.socket_handoff)
 
         self.socket.setsockopt(zmq.LINGER, 0)
         self.socket_neigh.setsockopt(zmq.LINGER, 0)
+        self.socket_handoff.setsockopt(zmq.LINGER, 0)
 
         self.socket.close()
         self.socket_neigh.close()
+        self.socket_handoff.close()
 
     def start(self):
         self.init_sockets()
@@ -82,6 +92,9 @@ class Server:
             if self.socket_neigh in sockets and sockets.get(self.socket_neigh) == zmq.POLLIN:
                 identity, message = self.receive_message_neighbour()
                 self.handle_message(identity, message)
+
+            if self.socket_handoff in sockets and sockets.get(self.socket_handoff) == zmq.POLLIN:
+                print(self.socket_handoff.recv_multipart())
 
             if self.socket in sockets and sockets.get(self.socket) == zmq.POLLIN:
 
@@ -106,6 +119,7 @@ class Server:
                     self.kill_sockets()
                     self.init_sockets()
                     self.loadbalLiveness = HEARTBEAT_LIVENESS
+
             if time.time() > heartbeat_at:
                 heartbeat_at = time.time() + HEARTBEAT_INTERVAL
                 # logger.info("Sent heartbeat to load balancer")
@@ -157,11 +171,19 @@ class Server:
                 self.send_message(self.socket, shopping_list, ServerMsgType.REPLY, identity)
 
         elif message["type"] == ClientMsgType.POST:
-            #self.send_message(self.socket, "ALIVE", ServerMsgType.ACK, str(self.hostname))
+            ack_msg = {'identity': self.hostname, 'type': 'ACK'}
+            self.send_message(self.socket_handoff, "ACK", ServerMsgType.ACK)
+
             shopping_list = json.loads(message['body'])
             merged = self.persist_to_json(shopping_list)
+
             self.send_message(self.socket, "Modified Shopping List Correctly", ServerMsgType.REPLY, identity)
-            _, neighbours = self.ring.get_server(shopping_list['uuid'])
+            coordinator, neighbours = self.ring.get_server(shopping_list['uuid'])
+
+            neighbours.insert(0, coordinator)
+
+            self.handoff_replicate(neighbours, shopping_list)
+
             #self.replicate_data(neighbours, merged)
 
         elif message["type"] == LoadbalMsgType.HEARTBEAT:
@@ -170,7 +192,8 @@ class Server:
 
         elif message['type'] == ServerMsgType.REPLICATE:
             print(message)
-            #self.persist_to_json(message['body'])
+            self.send_message(self.socket_neigh, "ACK", ServerMsgType.ACK)
+            self.persist_to_json(message['body'])
 
         elif message['type'] == ServerMsgType.REBALANCE:
             shopping_lists = message['body']
@@ -187,7 +210,7 @@ class Server:
             #print(list(self.ring.ring.keys()))
             #print(list(self.ring.ring.values()))
 
-            self.send_data_on_join(updates)
+            #self.send_data_on_join(updates)
 
         elif message['type'] == "RING":
             nodes = list(message['nodes'])
@@ -197,10 +220,72 @@ class Server:
         elif message['type'] == "LEAVE_RING":
             print(message)
 
+        elif message['type'] == ServerMsgType.HANDOFF:
+            print(message)
+
         else:
             logger.error("Invalid message received: \"%s\"", message)
 
         self.loadbalLiveness = HEARTBEAT_LIVENESS
+
+
+    def handoff_replicate(self, neighbours, shopping_list):
+        cur_index = neighbours.index(self.identity)
+        supposed_nodes = neighbours[:3]
+
+        max_tries = 3
+        if self.identity in supposed_nodes:
+            max_tries = 2
+
+
+        neighbours.remove(self.identity)
+        actual_nodes = [self.identity]
+        success_tries = 0
+
+        for neigh in neighbours:
+            if success_tries == max_tries:
+                break
+
+            print("CUR NEIGHBOURS: ", neigh)
+            neigh_ip = neigh.split('@', 1)[-1]
+
+            try:
+                self.socket_neigh.connect(f'tcp://{neigh_ip}')
+
+                self.send_message(self.socket_neigh, shopping_list, ServerMsgType.REPLICATE)
+
+                self.socket_neigh.poll(timeout=5000)
+
+                if self.socket_neigh.poll():
+                    ack_res = json.loads(self.socket_neigh.recv().decode("utf-8"))
+                    ident = "Server@" + ack_res['identity']
+
+                    if ack_res['type'] == "ACK":
+                        actual_nodes.append(neigh)
+                        success_tries += 1
+
+                    print(f"Received message: {ack_res}")
+                else:
+                    print("No message received within 5 seconds.")
+
+            except zmq.error.ZMQError as e:
+                print(f"Error connecting or receiving from {neigh}: {e}")
+            finally:
+                self.socket_neigh.disconnect(f'tcp://{neigh_ip}')
+
+        print("SUPPOSED:", supposed_nodes)
+        print("ORIGINAL:", actual_nodes)
+
+        supposed_nodes = [item for item in supposed_nodes if item not in actual_nodes]
+        actual_nodes = [item for item in actual_nodes if item not in supposed_nodes]
+
+        for i in range(len(supposed_nodes)):
+            neigh_ip = actual_nodes[i].split('@', 1)[-1]
+            self.socket_neigh.connect(f'tcp://{neigh_ip}')
+
+            handoff_msg = {'uuid': shopping_list['uuid'], 'destination': supposed_nodes[i]}
+
+            self.send_message(self.socket_neigh, shopping_list, ServerMsgType.HANDOFF)
 
     def receive_message_neighbour(self):
         try:
@@ -311,7 +396,7 @@ class Server:
 
 def main():
     #server = Server(int(sys.argv[1]))
-    server = Server(1226)
+    server = Server(1229)
     server.start()
     server.stop()
 
