@@ -7,7 +7,7 @@ import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
 import { fetchShoppingLists } from "../utils";
 import ButtonGroup from '@mui/material/ButtonGroup';
 const { ipcRenderer } = window.require('electron');
-
+import { v4 as uuidv4 } from 'uuid';
 const Home = () => {
     const errorMessage= "Error couldn't find it";
     const [error, setError] = useState(false); 
@@ -15,7 +15,6 @@ const Home = () => {
 
     // Listen for the response from the main process
     ipcRenderer.on('zmqMessage', (event, information) => {
-        console.log(JSON.stringify(information.body))
         if(information.body === errorMessage){
             setError(true);
         }else{
@@ -25,8 +24,6 @@ const Home = () => {
     });
     
 
-
-    console.log("username", localStorage.getItem("username"));
     
     let userid = '';
     const [shoppingListId, setShoppingListId] = useState('');
@@ -45,18 +42,16 @@ const Home = () => {
         const fetchData = async () => {
             console.log("fetching data");
             try {
-                console.log("userid", userid);
+
                 const data = await fetchShoppingLists(userid);
                 setShoppingLists(data);
             } catch (error) {
-                
+                console.error(error);
             }
         };
     
         const handleIdResponse = (event, id) => {
             console.log('Received ID:', id);
-           
-            console.log("2");
             userid = id;
             fetchData(); 
             
@@ -79,11 +74,10 @@ const Home = () => {
     const handleNewList = () => {
 
         // Generate a new ID (for example, a random number for simplicity)
-        const newId = Math.floor(Math.random() * 1000); // Generate a random number (replace this with your logic for generating IDs)
-        
-        // Redirect to the new list URL
+        const newId = uuidv4();
+
         setShoppingListId(newId);
-        console.log("newId", newId);
+
         // Navigate to the new list URL
         navigate(`/shopping-list/${newId}?type=local`);
         
@@ -93,7 +87,6 @@ const Home = () => {
     const handleShopingList = () => {
         ipcRenderer.send('frontMessage', {body: shoppingListId, type: "GET"});
         
-        console.log("shoppingListId", shoppingListId);
         //navigate(`/shopping-list/${shoppingListId}`);
     }
 
@@ -154,11 +147,10 @@ const Home = () => {
                
                 
             </div>
-            <div className="error-message">
-                    {/* ... */}
-                    {error && <p>Error: Shopping list not found.</p>} {/* Display error message */}
-                    {/* ... */}
-                </div>
+            {error && <div className="alert alert-danger mt-3" role="alert">
+                    Error: Shopping list not found.
+            </div>}
+                
         </div>
     );
 };

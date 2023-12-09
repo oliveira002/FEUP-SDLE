@@ -15,7 +15,6 @@ const Login = () => {
             if (user) {
    
                 setSvLogin("Login successful!");
-                console.log(user.id)
                 ipcRenderer.send('login', {body: user.id, type: "LOGIN"});
                 localStorage.setItem("userid", user.id);
                 localStorage.setItem("username", user.username);
