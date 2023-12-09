@@ -225,6 +225,7 @@ class LoadBalancer:
             self.backend.send_multipart(request)
             self.broadcast_message(identity, "JOIN_RING")
         elif message['type'] == ServerMsgType.REPLY:
+            print("ENTROU AQUI:", message)
             request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
             self.frontend.send_multipart(request)
         elif message['type'] == "ACK":
@@ -270,9 +271,7 @@ class LoadBalancer:
 
                 self.backend.send_multipart(request)
 
-                self.handoff.poll(timeout=5000)
-
-                if self.handoff.poll():
+                if self.handoff.poll(timeout=2000):
                     ack_res = json.loads(self.handoff.recv().decode("utf-8"))
                     ident = "Server@" + ack_res['identity']
 
@@ -281,7 +280,7 @@ class LoadBalancer:
 
                     print(f"Received message: {ack_res}")
                 else:
-                    print("No message received within 5 seconds.")
+                    print("No message received within 2 seconds.")
 
                 self.handoff.disconnect(f'tcp://{neigh_ip}')
 

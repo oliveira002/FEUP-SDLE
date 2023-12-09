@@ -178,6 +178,7 @@ class Server:
             merged = self.persist_to_json(shopping_list)
 
             self.send_message(self.socket, "Modified Shopping List Correctly", ServerMsgType.REPLY, identity)
+
             coordinator, neighbours = self.ring.get_server(shopping_list['uuid'])
 
             neighbours.insert(0, coordinator)
@@ -210,7 +211,7 @@ class Server:
             #print(list(self.ring.ring.keys()))
             #print(list(self.ring.ring.values()))
 
-            #self.send_data_on_join(updates)
+            self.send_data_on_join(updates)
 
         elif message['type'] == "RING":
             nodes = list(message['nodes'])
@@ -237,7 +238,6 @@ class Server:
         if self.identity in supposed_nodes:
             max_tries = 2
 
-
         neighbours.remove(self.identity)
         actual_nodes = [self.identity]
         success_tries = 0
@@ -250,13 +250,12 @@ class Server:
             neigh_ip = neigh.split('@', 1)[-1]
 
             try:
+                self.socket_neigh.setsockopt(zmq.LINGER, 0)
                 self.socket_neigh.connect(f'tcp://{neigh_ip}')
 
                 self.send_message(self.socket_neigh, shopping_list, ServerMsgType.REPLICATE)
 
-                self.socket_neigh.poll(timeout=5000)
-
-                if self.socket_neigh.poll():
+                if self.socket_neigh.poll(timeout=2000):
                     ack_res = json.loads(self.socket_neigh.recv().decode("utf-8"))
                     ident = "Server@" + ack_res['identity']
 
@@ -266,7 +265,7 @@ class Server:
 
                     print(f"Received message: {ack_res}")
                 else:
-                    print("No message received within 5 seconds.")
+                    print("No message received within 2 seconds.")
 
             except zmq.error.ZMQError as e:
                 print(f"Error connecting or receiving from {neigh}: {e}")
@@ -276,16 +275,27 @@ class Server:
         print("SUPPOSED:", supposed_nodes)
         print("ORIGINAL:", actual_nodes)
 
-        supposed_nodes = [item for item in supposed_nodes if item not in actual_nodes]
-        actual_nodes = [item for item in actual_nodes if item not in supposed_nodes]
+        supposed_nodes2 = [item for item in supposed_nodes if item not in actual_nodes]
+        actual_nodes2 = [item for item in actual_nodes if item not in supposed_nodes]
 
-        for i in range(len(supposed_nodes)):
-            neigh_ip = actual_nodes[i].split('@', 1)[-1]
+        print("SUPPOSED:", supposed_nodes)
+        print("ORIGINAL:", actual_nodes)
+
+        for i in range(len(supposed_nodes2)):
+            neigh_ip = actual_nodes2[i].split('@', 1)[-1]
+            if neigh_ip == self.identity:
+                # its handoff here, save as handoff
+                continue
+
             self.socket_neigh.connect(f'tcp://{neigh_ip}')
 
-            handoff_msg = {'uuid': shopping_list['uuid'], 'destination': supposed_nodes[i]}
+            handoff_msg = {'uuid': shopping_list['uuid'], 'destination': supposed_nodes2[i]}
 
-            self.send_message(self.socket_neigh, shopping_list, ServerMsgType.HANDOFF)
+            self.send_message(self.socket_neigh, handoff_msg, ServerMsgType.HANDOFF)
+
+            self.socket_neigh.disconnect(f'tcp://{neigh_ip}')
+
+
 
     def receive_message_neighbour(self):
         try:
@@ -317,6 +327,8 @@ class Server:
 
             except Exception as e:
                 logger.error(f"Failed to connect to {receiver}: {e}")
+
+            self.socket_neigh.disconnect(f'tcp://{receiver}')
 
 
 
