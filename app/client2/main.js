@@ -17,13 +17,13 @@ class Client {
     
     this.identity = this.uuid.toString('ascii');
     // Connect to the ZeroMQ endpoint
-    const endpoint = 'tcp://127.0.0.1:6666';
+    const endpoint = 'tcp://127.0.0.1:6000';
 
     this.socket.connect(endpoint);
 
     const formattedMessage = {
         identity: this.uuid.toString(),
-        body: "OI",
+        body: "815bf169-4d4b-455f-a8b1-b9dadeaea9e3",
         type: "GET",
     };
   

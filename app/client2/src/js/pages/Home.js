@@ -9,15 +9,21 @@ import ButtonGroup from '@mui/material/ButtonGroup';
 const { ipcRenderer } = window.require('electron');
 
 const Home = () => {
-
+    const errorMessage= "Error couldn't find it";
+    const [error, setError] = useState(false); 
    
-    //ipcRenderer.send('frontMessage', {body: "shopping_list_1", type: "GET"});
 
     // Listen for the response from the main process
     ipcRenderer.on('zmqMessage', (event, information) => {
-        console.log(JSON.stringify(information))
-    // Do something with the information in your React component
+        console.log(JSON.stringify(information.body))
+        if(information.body === errorMessage){
+            setError(true);
+        }else{
+            setError(false);
+            navigate(`/shopping-list/${shoppingListId}?type=remote`);
+        }
     });
+    
 
 
     console.log("username", localStorage.getItem("username"));
@@ -79,16 +85,16 @@ const Home = () => {
         setShoppingListId(newId);
         console.log("newId", newId);
         // Navigate to the new list URL
-        navigate(`/shopping-list/${newId}`);
+        navigate(`/shopping-list/${newId}?type=local`);
         
         
     };
 
     const handleShopingList = () => {
-
+        ipcRenderer.send('frontMessage', {body: shoppingListId, type: "GET"});
         
         console.log("shoppingListId", shoppingListId);
-        navigate(`/shopping-list/${shoppingListId}`);
+        //navigate(`/shopping-list/${shoppingListId}`);
     }
 
 
@@ -104,7 +110,7 @@ const Home = () => {
             >
                 {shoppingLists && shoppingLists.ShoppingLists && shoppingLists.ShoppingLists.length > 0 ? (
                     shoppingLists.ShoppingLists.map((shoppingList) => (
-                        <Button key={shoppingList.uuid} onClick={() => navigate(`/shopping-list/${shoppingList.uuid}`)}>
+                        <Button key={shoppingList.uuid} onClick={() => navigate(`/shopping-list/${shoppingList.uuid}?type=local`)}>
                             Shopping List ID: {shoppingList.uuid}
                         </Button>
                     ))
@@ -143,9 +149,16 @@ const Home = () => {
                 <Button className="home-button"  variant="contained" onClick={handleShopingList} >
                     Enter Shopping List
                 </Button>
-            </div>
                 
             </div>
+               
+                
+            </div>
+            <div className="error-message">
+                    {/* ... */}
+                    {error && <p>Error: Shopping list not found.</p>} {/* Display error message */}
+                    {/* ... */}
+                </div>
         </div>
     );
 };

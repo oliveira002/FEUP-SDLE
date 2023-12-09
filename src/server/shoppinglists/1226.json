@@ -1,0 +1,21 @@
+{
+  "ShoppingLists": [
+    {
+      "uuid": "815bf169-4d4b-455f-a8b1-b9dadeaea9e3",
+      "items": {
+        "bananas": {
+          "quantity": 3,
+          "timestamps": {
+            "1231-31-23123-12-33": 2
+          }
+        },
+        "cebolas": {
+          "quantity": 1,
+          "timestamps": {
+            "1231-31-23123-12-33": 2
+          }
+        }
+      }
+    }
+  ]
+}

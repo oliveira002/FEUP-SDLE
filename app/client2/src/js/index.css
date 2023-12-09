@@ -45,4 +45,12 @@ html {
     text-align: center;
   }
 
-  
+  .error-message{
+    color: red;
+
+  }
+
+  .last-updated{
+    width: 15%;
+    font-size: small;
+  }

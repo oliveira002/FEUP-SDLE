@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
-import { useParams } from 'react-router-dom'
+import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { fetchShoppingLists, saveShoppingList } from "../utils";
+
 const allProducts = [
   {
     id: 1,
@@ -24,27 +25,48 @@ const allProducts = [
     id: 5,
     name: "maçãs",
   },
-
  
-
-
+  {
+    id: 6,
+    name: "leite",
+  },
+  {
+    id: 7,
+    name: "ovos",
+  },
+  {
+    id: 8,
+    name: "pão de forma",
+  },
+  {
+    id: 9,
+    name: "queijo",
+  },
+ 
 ];
 
 const ShoppingList = () => {
+
+    
     const [products, setProducts] = useState([]);
     const [initialProducts, setInitialProducts] = useState([]);
     const [shoppingList, setShoppingList] = useState(null);
     const [shoppingLists, setShoppingLists] = useState(null);
     const [svShoppingList, setSvShoppingList] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
-    const { id } = useParams(); // Get the ID from the URL
-    console.log(products)
-    console.log(initialProducts)
+    const { id } = useParams();
+    const location = useLocation();
+    const type = new URLSearchParams(location.search).get('type');
+    const navigate = useNavigate();
+
+    let currentURL = window.location.href;
+    console.log(currentURL);
   
+    const errorMessage= "Error couldn't find it";
 
     const [userid, setUserid] = useState(null);
     const { ipcRenderer } = window.require('electron');
-
+ 
     useEffect(() => {
   
       const handleIdResponse = (event, id) => {
@@ -61,23 +83,34 @@ const ShoppingList = () => {
           ipcRenderer.removeListener('getIdResponse', handleIdResponse);
       };
   }, [userid]);
-    
+
+    ipcRenderer.on('zmqMessage', (event, information) => {
+        
+      if (information.type == "REPLY" && information.body != errorMessage) {
+        setShoppingList(information.body)
+        const itemsArray = Object.entries(information.body.items).map(([name, details]) => ({
+          id: allProducts.find((product) => product.name === name).id,
+        
+          name: name,
+          quantity: details.quantity,
+          timestamps: details.timestamps
+      }));
+
+      setProducts(itemsArray);
+      setInitialProducts(itemsArray);
+      // Change remote to local
+      navigate(`/shopping-list/${id}?type=local`);
+      
+
+        
+    }})
+
     
     useEffect(() => {
       if(userid == null) return;
 
-      ipcRenderer.send('frontMessage', {body: id, type: "GET"});
-
-      const fetchServerData = async () => {
-        ipcRenderer.on('zmqMessage', (event, information) => {
-          let parsed = JSON.stringify(information)
-          if (parsed.type == "REPLY") {
-            setSvShoppingList(parsed)
-            console.log(parsed)
-          }
-        });
-
-
+      if(type === "remote"){
+        ipcRenderer.send('frontMessage', {body: id, type: "GET"});
       }
 
       const fetchData = async () => {
@@ -114,7 +147,8 @@ const ShoppingList = () => {
       };
 
       fetchData();
-      fetchServerData()
+   
+ 
   }, [userid]);
     
     // Function to update quantity
@@ -193,34 +227,48 @@ const ShoppingList = () => {
       })
     }
       
-    console.log(new_items)
+   
+    console.log(products)
     const saveToLocal = () => {
-    
+      console.log("saving to local")
+
+      console.log()
       saveShoppingList(userid, id, { 
         uuid: id,
         items: products.reduce((acc, product) => {
-            const currentTimestamp = Object.entries(product.timestamps)[0][1];
-            let updatedTimestamp;
-            if(initialProducts.find((prod) => prod.id === product.id)){
-              updatedTimestamp = product.quantity !== initialProducts.find((prod) => prod.id === product.id).quantity ? currentTimestamp + 1 : currentTimestamp;
-            }
-            else{
-              updatedTimestamp = currentTimestamp + 1;
-            }
-            
-            console.log(product.name, updatedTimestamp)
-    
-            acc[product.name] = {
-                quantity: product.quantity,
-                timestamps: {
-                  [userid]: updatedTimestamp,
-                }
-            };
-            return acc;
-        }, {})
+        const currentTimestamp = Object.entries(product.timestamps)[0][1];
+        let newid = Object.entries(product.timestamps)[0][0];
 
-      });
+        let updatedTimestamp;
+        if(initialProducts.find((prod) => prod.id === product.id)){
+          if(product.quantity !== initialProducts.find((prod) => prod.id === product.id).quantity){
+            updatedTimestamp = currentTimestamp + 1;
+            newid = userid
+          }
+          else{
+            updatedTimestamp = currentTimestamp;
+          }
+        
+        }
+        else{
+          updatedTimestamp = currentTimestamp + 1;
+        }
+        
+
+        acc[product.name] = {
+            quantity: product.quantity,
+            timestamps: {
+              [newid]: updatedTimestamp,
+            }
+        };
+        return acc;
+    }, {})});
   };
+  const syncServer = () => {
+    console.log("syncing to server")
+    console.log(shoppingList)
+    //ipcRenderer.send('frontMessage', {body: {uuid: id, items: new_items}, type: "PUT"});
+  }
 
   return (
     <div className="container main-section">
@@ -255,11 +303,12 @@ const ShoppingList = () => {
           <table className="table table-hover border bg-white">
             <thead>
               <tr>
-                <th>Product</th>
+                <th style={{ width: "15%" }}>Product</th>
                 <th style={{ width: "10%" }}>Quantity</th>
               
                 <th>Version</th>
                 <th>Action</th>
+                <th>Last updated by</th>
               </tr>
             </thead>
             <tbody>
@@ -298,6 +347,9 @@ const ShoppingList = () => {
                             <FontAwesomeIcon icon={faTrash} />
                         </button>
                   </td>
+                  <td  className="last-updated" data-th="">
+                    {Object.entries(product.timestamps)[0][0]}
+                  </td>
                  
                 </tr>
               ))}
@@ -313,13 +365,15 @@ const ShoppingList = () => {
                 <td colSpan="1" className="hidden-xs text-center" style={{ width: "10%" }}>
                   <strong>Total: <span className="total">{calculateTotal()}</span></strong>
                 </td>
+                <td colSpan="1" className="hidden-xs text-center" style={{ width: "10%" }}>
+                </td>
                 <td>
                       <button onClick={saveToLocal} className="btn btn-success btn-block sync">
                             Local Save
                       </button>
                 </td>
                 <td>
-                      <button  className="btn btn-secondary btn-block sync">
+                      <button  onClick={syncServer} className="btn btn-secondary btn-block sync">
                             Sync Server
                       </button>
                 </td>

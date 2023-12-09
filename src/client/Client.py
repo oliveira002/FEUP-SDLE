@@ -58,7 +58,7 @@ class Client:
         sl.dec_item("cebolas", 2, "1231-31-23123-12-33")
         sl.uuid = '815bf169-4d4b-455f-a8b1-b9dadeaea9e3'
         #self.send_message(str(self.id), str(sl), ClientMsgType.POST)
-        self.send_message(str(self.id), sl.uuid, ClientMsgType.GET)
+        #self.send_message(str(self.id), sl.uuid, ClientMsgType.GET)
 
         self.retries_left = REQUEST_RETRIES
         while True:
