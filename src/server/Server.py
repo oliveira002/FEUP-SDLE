@@ -20,12 +20,13 @@ logger = setup_logger(script_filename)
 PRIMARY_BACKEND_ENDPOINT = '127.0.0.1:7000'
 BACKUP_BACKEND_ENDPOINT = '127.0.0.1:7001'
 SERVERS = [PRIMARY_BACKEND_ENDPOINT, BACKUP_BACKEND_ENDPOINT]
-HEARTBEAT_LIVENESS = 3
+HEARTBEAT_LIVENESS = 10
 HEARTBEAT_INTERVAL = 1
 INTERVAL_INIT = 1
 INTERVAL_MAX = 32
-REQUEST_TIMEOUT = 1
-FAILOVER_DELAY = 2
+REQUEST_TIMEOUT = 10
+FAILOVER_DELAY = 20
+NUM_REPLICAS = 3
 
 
 class Server:
@@ -159,7 +160,8 @@ class Server:
 
     def handle_message(self, identity, message):
         if message["type"] == ClientMsgType.GET:
-            #self.send_message(self.socket, "ALIVE", ServerMsgType.ACK, str(self.hostname))
+            ack_msg = {'identity': self.hostname, 'type': 'ACK'}
+            self.send_message(self.socket_handoff, "ACK", ServerMsgType.ACK)
             shopping_list_id = message['body']
 
             shopping_list = self.read_from_json(shopping_list_id)
@@ -222,6 +224,7 @@ class Server:
             print(message)
 
         elif message['type'] == ServerMsgType.HANDOFF:
+            print("FODASSE")
             print(message)
 
         else:
@@ -232,11 +235,11 @@ class Server:
 
     def handoff_replicate(self, neighbours, shopping_list):
         cur_index = neighbours.index(self.identity)
-        supposed_nodes = neighbours[:3]
+        supposed_nodes = neighbours[:NUM_REPLICAS]
 
-        max_tries = 3
+        max_tries = NUM_REPLICAS
         if self.identity in supposed_nodes:
-            max_tries = 2
+            max_tries = NUM_REPLICAS - 1
 
         neighbours.remove(self.identity)
         actual_nodes = [self.identity]
@@ -287,6 +290,7 @@ class Server:
                 # its handoff here, save as handoff
                 continue
 
+            print(neigh_ip)
             self.socket_neigh.connect(f'tcp://{neigh_ip}')
 
             handoff_msg = {'uuid': shopping_list['uuid'], 'destination': supposed_nodes2[i]}

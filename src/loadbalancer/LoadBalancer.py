@@ -249,40 +249,39 @@ class LoadBalancer:
             self.frontend.send_multipart([identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")])
             return
 
-        if message['type'] == ClientMsgType.POST:
-            success_tries = 0
-            neighbours.insert(0, value)
-            print(neighbours)
+        success_tries = 0
+        neighbours.insert(0, value)
 
-            # neighbours have @
-            for neigh in neighbours:
-                if success_tries == 1:
-                    break
+        # neighbours have @
+        for neigh in neighbours:
+            print(neigh)
+            if success_tries == 1:
+                break
 
-                neigh_ip = neigh.split('@', 1)[-1]
-                neigh_ip_list = neigh_ip.split(':')
-                neigh_ip_list[0] = neigh_ip_list[0][:7] + '2'  # Changing the '1' to '2'
-                neigh_ip = ':'.join(neigh_ip_list)
+            neigh_ip = neigh.split('@', 1)[-1]
+            neigh_ip_list = neigh_ip.split(':')
+            neigh_ip_list[0] = neigh_ip_list[0][:7] + '2'  # Changing the '1' to '2'
+            neigh_ip = ':'.join(neigh_ip_list)
 
-                self.handoff.connect(f'tcp://{neigh_ip}')
+            self.handoff.connect(f'tcp://{neigh_ip}')
 
-                request = [neigh.encode("utf-8"), b"", identity.encode("utf-8"), b"",
-                           json.dumps(message).encode("utf-8")]
+            request = [neigh.encode("utf-8"), b"", identity.encode("utf-8"), b"",
+                       json.dumps(message).encode("utf-8")]
 
-                self.backend.send_multipart(request)
+            self.backend.send_multipart(request)
 
-                if self.handoff.poll(timeout=2000):
-                    ack_res = json.loads(self.handoff.recv().decode("utf-8"))
-                    ident = "Server@" + ack_res['identity']
+            if self.handoff.poll(timeout=2000):
+                ack_res = json.loads(self.handoff.recv().decode("utf-8"))
+                ident = "Server@" + ack_res['identity']
 
-                    if ack_res['type'] == "ACK" and ident == neigh:
-                        success_tries += 1
+                if ack_res['type'] == "ACK" and ident == neigh:
+                    success_tries += 1
 
-                    print(f"Received message: {ack_res}")
-                else:
-                    print("No message received within 2 seconds.")
+                print(f"Received message: {ack_res}")
+            else:
+                print("No message received within 2 seconds.")
 
-                self.handoff.disconnect(f'tcp://{neigh_ip}')
+            self.handoff.disconnect(f'tcp://{neigh_ip}')
 
 
 
