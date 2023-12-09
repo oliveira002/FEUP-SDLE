@@ -147,8 +147,14 @@ class Server:
         if message["type"] == ClientMsgType.GET:
             #self.send_message(self.socket, "ALIVE", ServerMsgType.ACK, str(self.hostname))
             shopping_list_id = message['body']
+
+            shopping_list = self.read_from_json(shopping_list_id)
+
+            if shopping_list is None:
+                self.send_message(self.socket, "Error couldn't find it", ServerMsgType.REPLY, identity)
             # need to check the json and merge (?) quorum
-            self.send_message(self.socket, "Quase", ServerMsgType.REPLY, identity)
+            else:
+                self.send_message(self.socket, shopping_list, ServerMsgType.REPLY, identity)
 
         elif message["type"] == ClientMsgType.POST:
             #self.send_message(self.socket, "ALIVE", ServerMsgType.ACK, str(self.hostname))
@@ -168,8 +174,6 @@ class Server:
 
         elif message['type'] == ServerMsgType.REBALANCE:
             shopping_lists = message['body']
-
-            print(type(shopping_lists))
 
             for sl in shopping_lists:
                 self.persist_to_json(sl)
@@ -259,6 +263,16 @@ class Server:
 
         return data
 
+    def read_from_json(self, shopping_list):
+        data = self.create_or_load_db_file()
+        existing_list = data.get("ShoppingLists", [])
+
+        for obj in existing_list:
+            if obj.get("uuid") == shopping_list:
+                return obj
+
+        return None
+
     def persist_to_json(self, new_object):
         file_path = f"shoppinglists/{self.port}.json"
 
@@ -297,7 +311,7 @@ class Server:
 
 def main():
     #server = Server(int(sys.argv[1]))
-    server = Server(1232)
+    server = Server(1226)
     server.start()
     server.stop()
 
