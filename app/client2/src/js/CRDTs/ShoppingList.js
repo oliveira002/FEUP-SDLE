@@ -27,6 +27,26 @@ class ShoppingList{
         return "{\"uuid\":\"" + this.uuid + "\", \"items\": {" + items + "}}"
     }
 
+    static merge(a, b){
+        let items = Array.from(a.items.keys()).concat(Array.from(b.items.keys()))
+        const uniqueItems = new Set(items);
+
+        let mergedItems = new Map()
+        for (const item of uniqueItems) {
+            mergedItems.set(item,
+                PNCounter.merge(
+                    (a.items.get(item) ?? PNCounter.zero()),
+                    (b.items.get(item) ?? PNCounter.zero())
+                )
+            );
+        }
+
+        // Assuming a.uuid === b.uuid
+        let mergedSL = new ShoppingList(a.uuid)
+        mergedSL.items = mergedItems
+        return mergedSL
+    }
+
 }
 
 module.exports = ShoppingList

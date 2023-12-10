@@ -20,11 +20,22 @@ function main(){
     let pn = new PNCounter(gc, gc2)
     //console.log(pn.toString())
 
-    let sl = new ShoppingList()
+    let sl1 = new ShoppingList()
     let replica = "5fb2f941-0c40-4aef-b48f-746540e3c723"
-    sl.inc_or_add_item("banana", 8, replica)
-    sl.inc_or_add_item("cebolas", 4, replica)
-    sl.dec_item("banana", 2, replica)
-    console.log(sl.toString())
+    sl1.inc_or_add_item("banana", 8, replica)
+    sl1.inc_or_add_item("cebolas", 4, replica)
+    sl1.dec_item("banana", 2, replica)
+    sl1.inc_or_add_item("cenouras", 1, replica)
+    sl1.inc_or_add_item("banana", 2, replica)
+    console.log("SL1", sl1.toString())
+
+    let sl2 = new ShoppingList()
+    replica = "263bf63c-b5fd-4beb-95c5-396f14167ee0"
+    sl2.inc_or_add_item("banana", 2, replica)
+    sl2.inc_or_add_item("pão", 3, replica)
+    console.log("SL2", sl2.toString())
+
+    let sl3 = ShoppingList.merge(sl1, sl2)
+    console.log("SL3", sl3.toString())
 
 } main()
