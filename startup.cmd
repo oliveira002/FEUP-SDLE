@@ -13,7 +13,7 @@ REM Install dependencies
 call pip install -r requirements.txt
 
 REM Start the primary load balancer
-start "Primary Load Balancer" "venv\Scripts\python.exe" "src\loadbalancer\LoadBalancer.py" p
+python "src\loadbalancer\LoadBalancer.py" p
 
 REM Wait for 3 seconds for sockets to stabilize
 call timeout /t 3 /nobreak > NUL
@@ -21,8 +21,8 @@ call timeout /t 3 /nobreak > NUL
 REM Start the backup load balancer
 start "Backup Load Balancer" "venv\Scripts\python.exe" "src\loadbalancer\LoadBalancer.py" b
 
-REM Wait for 3 seconds for sockets to stabilize
-timeout /t 10 /nobreak > NUL
+REM Wait for 5 seconds for sockets to stabilize
+timeout /t 5 /nobreak > NUL
 
 REM Start the servers on specified ports
 start "Server@1225" "venv\Scripts\python.exe" "src\server\Server.py" 1225
@@ -33,6 +33,7 @@ start "Server@1229" "venv\Scripts\python.exe" "src\server\Server.py" 1229
 
 REM Close the virtual environment
 call deactivate
+pause
 
 REM Install client dependencies
 ::call cd app\client

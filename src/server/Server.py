@@ -17,8 +17,6 @@ from src.common.LoadbalMsgType import LoadbalMsgType
 from src.common.ServerMsgType import ServerMsgType
 from src.common.utils import setup_logger, format_msg
 
-
-
 # Logger setup
 script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
 logger = setup_logger(script_filename)
@@ -224,12 +222,9 @@ class Server:
 
     def send_data_on_join(self, update_info):
         update_info = [x for x in update_info if x['send'] == self.identity]
-        print(update_info)
         for update in update_info:
             receiver = update['receive'].split('@', 1)[-1]
             shopping_lists = self.get_shopping_lists_range(update['content'][0], update['content'][1])
-
-            print(shopping_lists)
 
             if len(shopping_lists) == 0:
                 continue
@@ -243,6 +238,7 @@ class Server:
 
     def get_shopping_lists_range(self, min_hash, max_hash):
         data = self.create_or_load_db_file()
+        print(data)
 
         if max_hash == -1:
             filtered_lists = [shopping_list for shopping_list in data['ShoppingLists']
@@ -251,23 +247,27 @@ class Server:
 
         filtered_lists = [shopping_list for shopping_list in data['ShoppingLists']
                           if min_hash < self.hash_function(shopping_list['uuid']) < max_hash]
-
+        
         return filtered_lists
 
     def create_or_load_db_file(self):
-        file_path = f"shoppinglists/{self.port}.json"
+        file_path = f"shoppinglists\{self.port}.json"
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(current_directory, file_path)
 
         try:
-            with open(file_path, 'r') as file:
-                data = json.load(file)
-        except FileNotFoundError:
-            # If the file doesn't exist, create an empty dictionary
-            data = {"ShoppingLists": []}
+            if os.path.exists(file_path):
+                with open(file_path, 'r') as file:
+                    data = json.load(file)
+            else:
+                data = {"ShoppingLists": []}
+                with open(file_path, 'w') as file:
+                    json.dump(data, file, indent=2)
 
-        with open(file_path, 'w') as file:
-            json.dump(data, file, indent=2)
-
-        return data
+            return data
+        except Exception as e:
+            print(f"Error: {e}")
+            return None
 
     def read_from_json(self, shopping_list):
         data = self.create_or_load_db_file()
