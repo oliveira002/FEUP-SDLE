@@ -59,9 +59,8 @@ const ShoppingList = () => {
 
     let currentURL = window.location.href;
     console.log(currentURL);
-  
-    const errorMessage= "Error couldn't find it";
-    let requestType;
+
+
 
     const [userid, setUserid] = useState(null);
     const { ipcRenderer } = window.require('electron');
@@ -85,25 +84,47 @@ const ShoppingList = () => {
 
     ipcRenderer.on('zmqMessage', (event, information) => {
       console.log(information)    
+
       if (information.type == "REPLY" && information.body === "Modified Shopping List Correctly"){ 
-        setServerMessage("Modified Shopping List Correctly");
-        navigate(`/shopping-list/${id}?type=local`);
-      }
-      else if (information.type == "REPLY" && information.body != errorMessage) {
-        setShoppingList(information.body)
-        const itemsArray = Object.entries(information.body.items).map(([name, details]) => ({
+        const example = {"uuid":"815bf169-4d4b-455f-a8b1-b9dadeaea9e3","items":{"bananas":{"quantity":3,"timestamps":{"1231-31-23123-12-33":2}},"cebolas":{"quantity":1,"timestamps":{"1231-31-23123-12-33":2}}}}
+        
+        const itemsArray = Object.entries(example.items).map(([name, details]) => ({
           id: allProducts.find((product) => product.name === name).id,
         
           name: name,
           quantity: details.quantity,
           timestamps: details.timestamps
+        }));
+        /*if(itemsArray === products){
+          setServerMessage("Modified Shopping List Correctly");
+          navigate(`/shopping-list/${id}?type=local`);
+        }
+        else{
+          setServerMessage("Local changes were merged with the server");
+          setProducts(itemsArray);
+          setInitialProducts(itemsArray);
+          navigate(`/shopping-list/${id}?type=local`);
+        }*/
+        setServerMessage("Modified Shopping List Correctly");
+        navigate(`/shopping-list/${id}?type=local`);
+
+        
+      }
+      else if (information.type == "REPLY") {
+        setShoppingList(information.body)
+        const itemsArray = Object.entries(information.body.items).map(([name, details]) => ({
+          id: allProducts.find((product) => product.name === name).id,
+          name: name,
+          quantity: details.quantity,
+          timestamps: details.timestamps
       }));
-      
+
 
       setProducts(itemsArray);
       setInitialProducts(itemsArray);
       // Change remote to local
       navigate(`/shopping-list/${id}?type=local`);
+
       
 
         
@@ -280,8 +301,10 @@ const ShoppingList = () => {
     const jsonFormat = JSON.stringify(desiredFormat);
     
     console.log(jsonFormat);
+  
+  
     ipcRenderer.send('frontMessage', {body: jsonFormat, type: "POST"});
-    requestType = "POST";
+    
   }
 
 

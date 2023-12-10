@@ -35,7 +35,6 @@ class Client {
     this.socket.on('message', (msg) => {
       const receivedMessage = JSON.parse(msg.toString());
       console.log('Received message:', receivedMessage);
-
       // Send the received message to the renderer process
       mainWindow.webContents.send('zmqMessage', receivedMessage);
     });
@@ -72,14 +71,6 @@ const createWindow = () => {
     },
   });
 
-  // Handle the event from the renderer process
-  ipcMain.on('getInformation', (event, arg) => {
-    // Perform any necessary logic to get the information
-    const information = 'FODASE';
-
-    // Send the information back to the renderer process
-    mainWindow.webContents.send('informationResponse', information);
-  });
   let clientBackend;
   ipcMain.on('frontMessage', (event, message) => {
     // Handle the message from the renderer process
