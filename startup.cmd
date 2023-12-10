@@ -13,7 +13,7 @@ REM Install dependencies
 call pip install -r requirements.txt
 
 REM Start the primary load balancer
-python "src\loadbalancer\LoadBalancer.py" p
+start "Primary Load Balancer" "venv\Scripts\python.exe" "src\loadbalancer\LoadBalancer.py" p
 
 REM Wait for 3 seconds for sockets to stabilize
 call timeout /t 3 /nobreak > NUL
