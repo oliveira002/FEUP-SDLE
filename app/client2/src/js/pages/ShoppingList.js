@@ -56,7 +56,7 @@ const ShoppingList = () => {
     const location = useLocation();
     const type = new URLSearchParams(location.search).get('type');
     const navigate = useNavigate();
-
+    const [newItem, setNewItem] = useState('');
     let currentURL = window.location.href;
     console.log(currentURL);
 
@@ -89,7 +89,6 @@ const ShoppingList = () => {
         const example = {"uuid":"815bf169-4d4b-455f-a8b1-b9dadeaea9e3","items":{"bananas":{"quantity":3,"timestamps":{"1231-31-23123-12-33":2}},"cebolas":{"quantity":1,"timestamps":{"1231-31-23123-12-33":2}}}}
         
         const itemsArray = Object.entries(example.items).map(([name, details]) => ({
-          id: allProducts.find((product) => product.name === name).id,
         
           name: name,
           quantity: details.quantity,
@@ -113,7 +112,6 @@ const ShoppingList = () => {
       else if (information.type == "REPLY") {
         setShoppingList(information.body)
         const itemsArray = Object.entries(information.body.items).map(([name, details]) => ({
-          id: allProducts.find((product) => product.name === name).id,
           name: name,
           quantity: details.quantity,
           timestamps: details.timestamps
@@ -151,7 +149,6 @@ const ShoppingList = () => {
                           
 
                           const itemsArray = Object.entries(shoppingList.items).map(([name, details]) => ({
-                            id: allProducts.find((product) => product.name === name).id,
                           
                             name: name,
                             quantity: details.quantity,
@@ -176,10 +173,10 @@ const ShoppingList = () => {
   }, [userid]);
     
     // Function to update quantity
-    const handleQuantityChange = (id, newQuantity) => {
+    const handleQuantityChange = (name, newQuantity) => {
       setProducts((prevProducts) =>
         prevProducts.map((product) =>
-          product.id === id ? { ...product, quantity: parseInt(newQuantity) } : product
+          product.name === name ? { ...product, quantity: parseInt(newQuantity) } : product
         )
       );
     };
@@ -191,32 +188,40 @@ const ShoppingList = () => {
 
     const [selectedProduct, setSelectedProduct] = useState(null);
 
-    // Function to handle adding a product to the list
-    const handleAddProduct = (product) => {
-      if (product) {
-          const productExists = products.find(prod => prod.id === product.id);
-          if (!productExists) {
-              product.quantity = 1;
-              product.timestamps = {
-                [userid]: 0,
-              }
-              setProducts([...products, product]);
-             
-          }
-          else if(productExists.quantity === 0){
-              productExists.quantity = 1;
-              productExists.timestamps = {
-                [userid]: Object.entries(productExists.timestamps)[0][1],
-              }
-              setProducts([...products]);
-          }
-      }
-  };
+  
 
-  const handleRemoveProduct = (id) => {
-    // quantity to 0
+  const handleAddCustomProduct = () => {
+    if (newItem.trim() !== '') {
+      const productExists = products.find(
+        (product) => product.name === newItem.trim()
+      );
+  
+      if (!productExists) {
+        const newProduct = {
+          name: newItem.trim(),
+          quantity: 1,
+          timestamps: {
+            [userid]: 0,
+          },
+        };
+        setProducts([...products, newProduct]);
+        setNewItem(''); // Clear the input field after adding the item
+      } else {
+        if(productExists.quantity === 0){
+  
+            productExists.quantity = 1;	
+            
+            setProducts([...products]);
+            }
+      }
+    }
+  };
+  console.log(products)
+
+  const handleRemoveProduct = (name) => {
+
       const updatedProducts = products.map(product => {
-          if (product.id === id) {
+          if (product.name === name) {
               product.quantity = 0;
           }
           return product;
@@ -253,8 +258,6 @@ const ShoppingList = () => {
     console.log(products)
     const saveToLocal = () => {
       console.log("saving to local")
-
-      console.log()
       saveShoppingList(userid, id, { 
         uuid: id,
         items: products.reduce((acc, product) => {
@@ -262,8 +265,8 @@ const ShoppingList = () => {
         let newid = Object.entries(product.timestamps)[0][0];
 
         let updatedTimestamp;
-        if(initialProducts.find((prod) => prod.id === product.id)){
-          if(product.quantity !== initialProducts.find((prod) => prod.id === product.id).quantity){
+        if(initialProducts.find((prod) => prod.name === product.name )){
+          if(product.quantity !== initialProducts.find((prod) => prod.name === product.name).quantity){
             updatedTimestamp = currentTimestamp + 1;
             newid = userid
           }
@@ -312,31 +315,28 @@ const ShoppingList = () => {
   return (
     <div className="container main-section">
       <div className="row">
+      
       <div className="col-lg-12 mb-3">
-      <input
-                type="text"
-                placeholder="Search products..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <div>
-                {/* Display all products when search term is present */}
-                {searchTerm && allProducts
-                    .filter(product => product.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                    .map(product => (
-                        <button
-                            key={product.id}
-                            onClick={() => handleAddProduct(product)} // Use onClick to handle the click event
-                            className="btn btn-primary btn-sm mr-2 mb-2"
-                        >
-                            {product.name}
-                        </button>
-                    ))
-                }
-            </div>
+        <input
+          type="text"
+          placeholder="Add item..."
+          value={newItem}
+          onChange={(e) => setNewItem(e.target.value)}
+        />
+        <button
+          onClick={handleAddCustomProduct}
+          className="btn btn-primary add-product"
+        >
+          Add
+        </button>
       </div>
         <div className="col-lg-12 pb-2">
-          <h4>Shopping Cart</h4>
+        <div className="d-flex title">
+          <h4>Shopping Cart: </h4>
+          {id && (
+            <h6>{id}</h6>
+          )}
+        </div>
         </div>
         <div className="col-lg-12 pl-3 pt-3">
           <table className="table table-hover border bg-white">
@@ -351,9 +351,10 @@ const ShoppingList = () => {
               </tr>
             </thead>
             <tbody>
-              {products && products.map((product) => (
+         
+              {products && products.map((product, index) => (
                 product.quantity > 0 &&
-                <tr key={product.id}>
+                <tr key={index}>
                   <td>
                     <div className="row">
                       
@@ -369,7 +370,7 @@ const ShoppingList = () => {
                       className="form-control text-center"
                       value={product.quantity}
                       onChange={(e) =>
-                        handleQuantityChange(product.id, e.target.value)
+                        handleQuantityChange(product.name, e.target.value)
                       }
                     />
                   </td>
@@ -381,7 +382,7 @@ const ShoppingList = () => {
                     
                         <button
                             className="btn btn-danger btn-sm"
-                            onClick={() => handleRemoveProduct(product.id)} // Handle remove when button is clicked
+                            onClick={() => handleRemoveProduct(product.name)} // Handle remove when button is clicked
                         >
                             <FontAwesomeIcon icon={faTrash} />
                         </button>

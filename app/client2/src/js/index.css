@@ -54,3 +54,11 @@ html {
     width: 15%;
     font-size: small;
   }
+  .title{
+    flex-direction: row;
+    gap: 10px;
+    align-items: center;
+  }
+  .add-product{
+    margin: 5px;
+  }

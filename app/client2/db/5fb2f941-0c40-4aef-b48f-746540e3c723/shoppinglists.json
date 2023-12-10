@@ -18,28 +18,6 @@
       }
     },
     {
-      "uuid": "920",
-      "items": {
-        "cebolas": {
-          "quantity": 1,
-          "timestamps": {
-            "5fb2f941-0c40-4aef-b48f-746540e3c723": 1
-          }
-        }
-      }
-    },
-    {
-      "uuid": "892",
-      "items": {
-        "cebolas": {
-          "quantity": 1,
-          "timestamps": {
-            "5fb2f941-0c40-4aef-b48f-746540e3c723": 1
-          }
-        }
-      }
-    },
-    {
       "uuid": "815bf169-4d4b-455f-a8b1-b9dadeaea9e3",
       "items": {
         "ovos": {
