@@ -64,7 +64,7 @@ class HashRing:
         neighbours = self.node_range(coordinator_key)
 
         neighbours = [self.ring[x] for x in neighbours if self.ring[x] != coordinator_identity]
-        neighbours = list(set(neighbours))
+        neighbours = list(dict.fromkeys(neighbours))
 
         return coordinator_identity, neighbours
 
