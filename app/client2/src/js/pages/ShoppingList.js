@@ -30,16 +30,13 @@ const allProducts = [
     id: 6,
     name: "leite",
   },
+
   {
     id: 7,
-    name: "ovos",
-  },
-  {
-    id: 8,
     name: "pão de forma",
   },
   {
-    id: 9,
+    id: 8,
     name: "queijo",
   },
  
@@ -53,6 +50,7 @@ const ShoppingList = () => {
     const [shoppingList, setShoppingList] = useState(null);
     const [shoppingLists, setShoppingLists] = useState(null);
     const [svShoppingList, setSvShoppingList] = useState(null);
+    const [serverMessage, setServerMessage] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const { id } = useParams();
     const location = useLocation();
@@ -61,8 +59,8 @@ const ShoppingList = () => {
 
     let currentURL = window.location.href;
     console.log(currentURL);
-  
-    const errorMessage= "Error couldn't find it";
+
+
 
     const [userid, setUserid] = useState(null);
     const { ipcRenderer } = window.require('electron');
@@ -85,21 +83,48 @@ const ShoppingList = () => {
   }, [userid]);
 
     ipcRenderer.on('zmqMessage', (event, information) => {
+      console.log(information)    
+
+      if (information.type == "REPLY" && information.body === "Modified Shopping List Correctly"){ 
+        const example = {"uuid":"815bf169-4d4b-455f-a8b1-b9dadeaea9e3","items":{"bananas":{"quantity":3,"timestamps":{"1231-31-23123-12-33":2}},"cebolas":{"quantity":1,"timestamps":{"1231-31-23123-12-33":2}}}}
         
-      if (information.type == "REPLY" && information.body != errorMessage) {
-        setShoppingList(information.body)
-        const itemsArray = Object.entries(information.body.items).map(([name, details]) => ({
+        const itemsArray = Object.entries(example.items).map(([name, details]) => ({
           id: allProducts.find((product) => product.name === name).id,
         
           name: name,
           quantity: details.quantity,
           timestamps: details.timestamps
+        }));
+        /*if(itemsArray === products){
+          setServerMessage("Modified Shopping List Correctly");
+          navigate(`/shopping-list/${id}?type=local`);
+        }
+        else{
+          setServerMessage("Local changes were merged with the server");
+          setProducts(itemsArray);
+          setInitialProducts(itemsArray);
+          navigate(`/shopping-list/${id}?type=local`);
+        }*/
+        setServerMessage("Modified Shopping List Correctly");
+        navigate(`/shopping-list/${id}?type=local`);
+
+        
+      }
+      else if (information.type == "REPLY") {
+        setShoppingList(information.body)
+        const itemsArray = Object.entries(information.body.items).map(([name, details]) => ({
+          id: allProducts.find((product) => product.name === name).id,
+          name: name,
+          quantity: details.quantity,
+          timestamps: details.timestamps
       }));
+
 
       setProducts(itemsArray);
       setInitialProducts(itemsArray);
       // Change remote to local
       navigate(`/shopping-list/${id}?type=local`);
+
       
 
         
@@ -119,7 +144,6 @@ const ShoppingList = () => {
               setShoppingLists(data);
               if(data){
                 
-
                   data.ShoppingLists.map((shoppingList) => {
 
                       if(shoppingList.uuid === id){
@@ -213,9 +237,7 @@ const ShoppingList = () => {
     const filteredProducts = products.filter((product) =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    if(products[0]){
-      console.log(Object.entries(products[0].timestamps)[0][0])
-    }
+    
     let new_items = []
     for (let i = 0; i < products.length; i++) {
       new_items.push({
@@ -266,9 +288,26 @@ const ShoppingList = () => {
   };
   const syncServer = () => {
     console.log("syncing to server")
-    console.log(shoppingList)
-    //ipcRenderer.send('frontMessage', {body: {uuid: id, items: new_items}, type: "PUT"});
+
+    const desiredFormat = new_items.reduce((acc, product) => {
+      const { name, quantity, timestamps } = product;
+      acc.items[name] = { quantity, timestamps };
+      return acc;    
+    }
+    , { uuid: id, items: {} });
+
+    
+    // Converter para JSON
+    const jsonFormat = JSON.stringify(desiredFormat);
+    
+    console.log(jsonFormat);
+  
+  
+    ipcRenderer.send('frontMessage', {body: jsonFormat, type: "POST"});
+    
   }
+
+
 
   return (
     <div className="container main-section">
@@ -381,6 +420,12 @@ const ShoppingList = () => {
               </tr>
             </tfoot>
           </table>
+          {serverMessage && (
+                <div className="alert alert-success mt-3" role="alert">
+                    {serverMessage}
+                </div>
+            )
+            }
         </div>
       </div>
     </div>

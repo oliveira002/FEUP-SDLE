@@ -1,0 +1,33 @@
+{
+  "ShoppingLists": [
+    {
+      "uuid": "815bf169-4d4b-455f-a8b1-b9dadeaea9e3",
+      "items": {
+        "bananas": {
+          "quantity": 4,
+          "timestamps": {
+            "263bf63c-b5fd-4beb-95c5-396f14167ee0": 3
+          }
+        },
+        "cebolas": {
+          "quantity": 1,
+          "timestamps": {
+            "1231-31-23123-12-33": 2
+          }
+        }
+      }
+    },
+    {
+      "uuid": "542",
+      "items": {
+        "ovos": {
+          "quantity": 1,
+          "timestamps": {
+            "263bf63c-b5fd-4beb-95c5-396f14167ee0": 1
+          }
+        }
+      }
+    }
+    
+  ]
+}

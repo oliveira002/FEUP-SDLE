@@ -3,16 +3,66 @@
     {
       "uuid": "815bf169-4d4b-455f-a8b1-b9dadeaea9e3",
       "items": {
-        "bananas": {
+        "ovos": {
+          "quantity": 1,
+          "timestamps": {
+            "5fb2f941-0c40-4aef-b48f-746540e3c723": 3
+          }
+        }
+      }
+    },
+    {
+      "uuid": "b0dba467-5b04-474f-adfb-3c012c91474c",
+      "items": {
+        "cebolas": {
+          "quantity": 1,
+          "timestamps": {
+            "263bf63c-b5fd-4beb-95c5-396f14167ee0": 3
+          }
+        },
+        "ovos": {
           "quantity": 3,
           "timestamps": {
-            "1231-31-23123-12-33": 2
+            "263bf63c-b5fd-4beb-95c5-396f14167ee0": 3
+          }
+        }
+      }
+    },
+    {
+      "uuid": "e2ee4e97-bba0-4366-b40b-8f73d49fb33e",
+      "items": {
+        "bananas": {
+          "quantity": 7,
+          "timestamps": {
+            "5fb2f941-0c40-4aef-b48f-746540e3c723": 6
           }
         },
         "cebolas": {
           "quantity": 1,
           "timestamps": {
-            "1231-31-23123-12-33": 2
+            "5fb2f941-0c40-4aef-b48f-746540e3c723": 3
+          }
+        }
+      }
+    },
+    {
+      "uuid": "892",
+      "items": {
+        "cebolas": {
+          "quantity": 1,
+          "timestamps": {
+            "5fb2f941-0c40-4aef-b48f-746540e3c723": 2
+          }
+        }
+      }
+    },
+    {
+      "uuid": "920",
+      "items": {
+        "cebolas": {
+          "quantity": 1,
+          "timestamps": {
+            "5fb2f941-0c40-4aef-b48f-746540e3c723": 2
           }
         }
       }
