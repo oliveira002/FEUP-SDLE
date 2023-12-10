@@ -31,6 +31,7 @@ INTERVAL_INIT = 1
 INTERVAL_MAX = 32
 REQUEST_TIMEOUT = 1
 FAILOVER_DELAY = 2
+NUM_REPLICAS = 3
 
 
 class Server:
@@ -47,7 +48,10 @@ class Server:
         self.hostname = f"127.0.0.1:{self.port}"
         self.server_nr = 0
         self.identity = None
+        self.requests = []
         self.context = zmq.Context()
+        self.path = f"shoppinglists\{self.port}.json"
+        self.h_path = f"shoppinglists\{self.port}h.json"
 
     def init_sockets(self):
         self.socket = self.context.socket(zmq.DEALER)
@@ -81,21 +85,19 @@ class Server:
 
         interval = INTERVAL_INIT
         heartbeat_at = time.time() + HEARTBEAT_INTERVAL
+        identity_neigh = None
+        message_neigh = None
         while True:
             sockets = dict(self.poller.poll(HEARTBEAT_INTERVAL * 1000))
 
-            if self.socket_neigh in sockets and sockets.get(self.socket_neigh) == zmq.POLLIN:
-                identity, message = self.receive_message_neighbour()
-                self.handle_message(identity, message)
-
             if self.socket in sockets and sockets.get(self.socket) == zmq.POLLIN:
-
                 frames = self.socket.recv_multipart()
                 if not frames:
                     break
 
                 identity = frames[1].decode("utf-8")
                 message = json.loads(frames[3].decode("utf-8"))
+
                 if message["type"] != LoadbalMsgType.HEARTBEAT:
                     logger.info(f"Received message \"{message}\" from {identity}")
                 else:
@@ -114,6 +116,15 @@ class Server:
                     self.kill_sockets()
                     self.init_sockets()
                     self.loadbalLiveness = HEARTBEAT_LIVENESS
+
+            if self.socket_neigh in sockets and sockets.get(self.socket_neigh) == zmq.POLLIN:
+                identity_neigh, message_neigh = self.receive_message_neighbour()
+                self.handle_message(identity_neigh, message_neigh)
+
+            else:
+                identity_neigh = None
+                message_neigh = None
+
             if time.time() > heartbeat_at:
                 heartbeat_at = time.time() + HEARTBEAT_INTERVAL
                 logger.debug("Sent heartbeat to load balancer")
@@ -124,16 +135,46 @@ class Server:
         hashed_id = hashlib.md5(unique_id.encode()).hexdigest()
         self.id = hashed_id[:8]
 
-    def replicate_data(self, neighbours, shopping_list):
-        neighbours = [x.split('@', 1)[-1] for x in neighbours]
-        print(neighbours)
+    def check_requests(self, identity, message, rec_time):
+        new_reqs = list(self.requests)
+        for x in self.requests:
+            #print(self.requests)
+            shopping_list = x['body']['uuid']
+            value, neighbours = self.ring.get_server(shopping_list)
+            print(neighbours)
+            neighbours.insert(0, value)
 
-        for neighbour in neighbours:
-            try:
-                self.socket_neigh.connect(f'tcp://{neighbour}')
-                self.send_message(self.socket_neigh, shopping_list, ServerMsgType.REPLICATE)
-            except Exception as e:
-                logger.error(f"Failed to connect to {neighbour}: {e}")
+            if x['curr_node'] == identity and x['entry_time'] == message['entry_time']:
+                next_idx = neighbours.index('Server@' + x['curr_node']) + 1
+                next_node = neighbours[next_idx]
+                print("Recebeu a tempo", x['curr_node'])
+                message['replica'] += 1
+                if message['replica'] == 3:
+                    self.requests.remove(x)
+                    print("OLAOALOA")
+                    new_reqs.remove(x)
+                    self.requests = new_reqs
+                    continue
+
+                message['entry_time'] = time.time()
+                message['curr_node'] = next_node.split('@', 1)[-1]
+                message['type'] = "HANDOFF"
+                neigh_ip = message['curr_node']
+
+                self.requests.remove(x)
+                new_reqs.remove(x)
+                new_reqs.append(message)
+
+                try:
+                    self.socket_neigh.connect(f'tcp://{neigh_ip}')
+                    self.socket_neigh.send_json(message)
+
+                except Exception as e:
+                    logger.error(f"Failed to connect to {neigh_ip}: {e}")
+                finally:
+                    self.socket_neigh.disconnect(f'tcp://{neigh_ip}')
+
+        self.requests = new_reqs
 
     def send_message(self, socket, message, msg_type: ServerMsgType, identity=None):
         formatted_message = format_msg(identity if identity is not None else str(self.hostname), message,
@@ -143,7 +184,6 @@ class Server:
             logger.info(f"Sent message \"{formatted_message}\"")
         else:
             logger.debug(f"Sent message \"{formatted_message}\"")
-
 
     def receive_message(self):
         try:
@@ -159,48 +199,51 @@ class Server:
 
     def handle_message(self, identity, message):
         if message["type"] == ClientMsgType.GET:
-            # self.send_message(self.socket, "ALIVE", ServerMsgType.ACK, str(self.hostname))
             shopping_list_id = message['body']
 
-            shopping_list = self.read_from_json(shopping_list_id)
+            shopping_list = self.read_from_json(shopping_list_id, self.path)
 
             if shopping_list is None:
                 self.send_message(self.socket, "Error couldn't find it", ServerMsgType.REPLY, identity)
-            # need to check the json and merge (?) quorum
             else:
                 self.send_message(self.socket, shopping_list, ServerMsgType.REPLY, identity)
 
         elif message["type"] == ClientMsgType.POST:
-            # self.send_message(self.socket, "ALIVE", ServerMsgType.ACK, str(self.hostname))
             shopping_list = json.loads(message['body'])
-            merged = self.persist_to_json(shopping_list)
-            self.send_message(self.socket, "Modified Shopping List Correctly", ServerMsgType.REPLY, identity)
-            _, neighbours = self.ring.get_server(shopping_list['uuid'])
-            # self.replicate_data(neighbours, merged)
+            merged = self.persist_to_json(shopping_list, self.path)
+            self.send_message(self.socket, merged, ServerMsgType.REPLY, identity)
+
+            value, neighbours = self.ring.get_server(shopping_list['uuid'])
+            neighbours.insert(0, value)
+
+            self.handoff_replicate(neighbours, shopping_list)
 
         elif message["type"] == LoadbalMsgType.HEARTBEAT:
             logger.debug("Received load balancer heartbeat")
             pass
 
         elif message['type'] == ServerMsgType.REPLICATE:
-            print(message)
-            # self.persist_to_json(message['body'])
+            self.send_message(self.socket_neigh, "ACK", ServerMsgType.ACK)
+            self.persist_to_json(message['body'], self.path)
 
         elif message['type'] == ServerMsgType.REBALANCE:
             shopping_lists = message['body']
 
             for sl in shopping_lists:
-                self.persist_to_json(sl)
+                self.persist_to_json(sl, self.path)
 
-            # self.persist_to_json(message['body'])
+        elif message['type'] == ServerMsgType.HANDOFF_RECV:
+            shopping_lists = message['body']
+
+            for sl in shopping_lists:
+                self.persist_to_json(sl, self.path)
 
         elif message['type'] == "JOIN_RING":
+            node_ip = message['node'].split('@', 1)[-1]
             updates = self.ring.add_node(message['node'])
 
-            # print(list(self.ring.ring.keys()))
-            # print(list(self.ring.ring.values()))
-
             self.send_data_on_join(updates)
+            self.send_handoff_stored(message['node'])
 
         elif message['type'] == "RING":
             nodes = list(message['nodes'])
@@ -210,10 +253,90 @@ class Server:
         elif message['type'] == "LEAVE_RING":
             print(message)
 
+        elif message['type'] == ServerMsgType.HANDOFF:
+            self.persist_to_json(message['body'], self.h_path)
+
+        elif message['type'] == ServerMsgType.ACK:
+            print("Received ACK")
+
         else:
             logger.error("Invalid message received: \"%s\"", message)
 
         self.loadbalLiveness = HEARTBEAT_LIVENESS
+
+    def handoff_replicate(self, neighbours, shopping_list):
+        cur_index = neighbours.index(self.identity)
+        supposed_nodes = neighbours[:NUM_REPLICAS]
+
+        max_tries = NUM_REPLICAS
+        if self.identity in supposed_nodes:
+            max_tries = NUM_REPLICAS - 1
+
+        neighbours.remove(self.identity)
+        actual_nodes = [self.identity]
+        success_tries = 0
+
+        for neigh in neighbours:
+            if success_tries == max_tries:
+                break
+
+            print("CUR NEIGHBOURS: ", neigh)
+            neigh_ip = neigh.split('@', 1)[-1]
+
+            try:
+                self.socket_neigh.connect(f'tcp://{neigh_ip}')
+
+                self.send_message(self.socket_neigh, shopping_list, ServerMsgType.REPLICATE)
+
+                if self.socket_neigh.poll(timeout=5000):
+                    ack_res = json.loads(self.socket_neigh.recv().decode("utf-8"))
+                    ident = "Server@" + ack_res['identity']
+
+                    if ack_res['type'] == "ACK":
+                        actual_nodes.append(neigh)
+                        success_tries += 1
+
+                    print(f"Received message: {ack_res}")
+                else:
+                    print("No message received within 2 seconds.")
+
+            except zmq.error.ZMQError as e:
+                print(f"Error connecting or receiving from {neigh}: {e}")
+            finally:
+                self.socket_neigh.disconnect(f'tcp://{neigh_ip}')
+
+        print("SUPPOSED:", supposed_nodes)
+        print("ORIGINAL:", actual_nodes)
+
+        supposed_nodes2 = [item for item in supposed_nodes if item not in actual_nodes]
+        actual_nodes2 = [item for item in actual_nodes if item not in supposed_nodes]
+
+        supposed_nodes2 = supposed_nodes2[:len(actual_nodes2)]
+
+        print("SUPPOSED:", supposed_nodes2)
+        print("ORIGINAL:", actual_nodes2)
+
+        for i in range(len(supposed_nodes2)):
+
+            if self.identity == actual_nodes2[i]:
+                handoff_msg = {'uuid': shopping_list['uuid'], 'destination': supposed_nodes2[i]}
+                self.persist_to_json(handoff_msg, self.path)
+                continue
+
+            neigh_ip = actual_nodes2[i].split('@', 1)[-1]
+            self.socket_neigh = self.context.socket(zmq.DEALER)
+            try:
+                self.socket_neigh.connect(f'tcp://{neigh_ip}')
+
+                handoff_msg = {'uuid': shopping_list['uuid'], 'destination': supposed_nodes2[i]}
+
+                self.send_message(self.socket_neigh, handoff_msg, ServerMsgType.HANDOFF)
+
+            except zmq.error.ZMQError as e:
+                print(f"Error connecting or receiving from {neigh_ip}: {e}")
+
+            finally:
+                self.socket_neigh.disconnect(f'tcp://{neigh_ip}')
 
     def receive_message_neighbour(self):
         try:
@@ -246,7 +369,7 @@ class Server:
                 self.socket_neigh.disconnect(f'tcp://{receiver}')
 
     def get_shopping_lists_range(self, min_hash, max_hash):
-        data = self.create_or_load_db_file()
+        data = self.create_or_load_db_file(self.path)
         if max_hash == -1:
             filtered_lists = [shopping_list for shopping_list in data['ShoppingLists']
                               if min_hash < self.hash_function(shopping_list['uuid'])]
@@ -257,8 +380,7 @@ class Server:
 
         return filtered_lists
 
-    def create_or_load_db_file(self):
-        file_path = f"shoppinglists\{self.port}.json"
+    def create_or_load_db_file(self, file_path):
         current_directory = os.path.dirname(os.path.abspath(__file__))
         file_path = os.path.join(current_directory, file_path)
 
@@ -276,8 +398,8 @@ class Server:
             print(f"Error: {e}")
             return None
 
-    def read_from_json(self, shopping_list):
-        data = self.create_or_load_db_file()
+    def read_from_json(self, shopping_list, file_path):
+        data = self.create_or_load_db_file(file_path)
         existing_list = data.get("ShoppingLists", [])
 
         for obj in existing_list:
@@ -286,12 +408,47 @@ class Server:
 
         return None
 
-    def persist_to_json(self, new_object):
-        file_path = f"shoppinglists\{self.port}.json"
+    def send_handoff_stored(self, receiver):
+
+        h_data = self.create_or_load_db_file(self.h_path)
+        data = self.create_or_load_db_file(self.path)
+        hd_list = h_data.get("ShoppingLists", [])
+        d_list = data.get("ShoppingLists", [])
+
+        uuids = []
+        for item in hd_list:
+            if item.get("destination") == receiver:
+                uuids.append(item.get("uuid"))
+
+        remaining_hdata = [item for item in hd_list if item.get("uuid") not in uuids]
+
+        data = {"ShoppingLists": remaining_hdata}
+
+        shopping_lists = [obj for obj in d_list if obj["uuid"] in uuids]
+
+        neigh_ip = receiver.split('@', 1)[-1]
+
+        with open(self.h_path, 'w') as file:
+            json.dump(data, file, indent=2)
+
+        if len(shopping_lists) == 0:
+            return
+
+        try:
+            self.socket_neigh.connect(f'tcp://{neigh_ip}')
+            self.send_message(self.socket_neigh, shopping_lists, ServerMsgType.HANDOFF_RECV)
+
+        except zmq.error.ZMQError as e:
+            print(f"Error connecting or receiving from {neigh_ip}: {e}")
+
+        finally:
+            self.socket_neigh.disconnect(f'tcp://{neigh_ip}')
+
+    def persist_to_json(self, new_object, file_path):
         current_directory = os.path.dirname(os.path.abspath(__file__))
         file_path = os.path.join(current_directory, file_path)
 
-        data = self.create_or_load_db_file()
+        data = self.create_or_load_db_file(file_path)
 
         # Check if the given JSON object exists in the list by uuid
         existing_list = data.get("ShoppingLists", [])
@@ -327,7 +484,7 @@ class Server:
 
 def main():
     server = Server(int(sys.argv[1]))
-    #server = Server(1229)
+    #server = Server(1227)
     server.start()
     server.stop()
 

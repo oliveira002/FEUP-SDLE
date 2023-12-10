@@ -64,6 +64,7 @@ class LoadBalancer:
         self.context = zmq.Context.instance()
         self.ring = HashRing()
         self.lb_state = LoadbalancerState(BinaryLBState.NONE, 0, 0)
+        self.requests = []
 
     def init_sockets(self):
         self.pub = self.context.socket(zmq.PUB)
@@ -143,6 +144,7 @@ class LoadBalancer:
              #   poller = self.server_poller
             sockets = dict(poller.poll(HEARTBEAT_INTERVAL * 1000))
             if self.backend in sockets and sockets.get(self.backend) == zmq.POLLIN:
+                rec_time = time.time()
                 frames = self.backend.recv_multipart()
                 if not frames:
                     break
@@ -151,11 +153,13 @@ class LoadBalancer:
                 message = json.loads(frames[1].decode("utf-8"))
                 logger.info(f"Received message \"{message}\" from {identity}")
 
+                self.check_requests(identity, message, rec_time)
+
                 self.lb_state.event = BinaryLBState.CLIENT_REQUEST
                 try:
                     run_fsm(self.lb_state)
                     if self.lb_state.state != BinaryLBState.SELF_PASSIVE:
-                        self.handle_server_message(identity, message)
+                        self.handle_server_message(identity, message, rec_time)
                 except BStarException:
                     del frames, identity, message
 
@@ -200,7 +204,6 @@ class LoadBalancer:
                 else:
                     nodes = list(msg['nodes'])
                     if len(nodes) > 0 and nodes != self.ring.nodes:
-                        print(msg)
                         new_ring = HashRing()
                         new_ring.build_ring(nodes)
                         self.ring = new_ring
@@ -224,10 +227,9 @@ class LoadBalancer:
         routing_table = self.ring.get_routing_table()
         self.pub.send_json(routing_table)
 
-    def handle_server_message(self, identity, message):
+    def handle_server_message(self, identity, message, rec_time):
         self.ring.add_node(identity)
         if message['type'] == ServerMsgType.CONNECT:
-            #self.sync_routers()
             cur_ring_msg = self.ring.get_routing_table()
             request = [identity.encode("utf-8"), b"", b"", b"", json.dumps(cur_ring_msg).encode("utf-8")]
             self.backend.send_multipart(request)
@@ -240,26 +242,78 @@ class LoadBalancer:
         elif message['type'] == ServerMsgType.HEARTBEAT:
             pass
 
+    def check_requests(self, identity, message, rec_time):
+        new_reqs = list(self.requests)
+        for x in self.requests:
+            print(x)
+            if identity == x['curr_node'] and message['identity'] == x['identity']:
+                self.requests.remove(x)
+                new_reqs.remove(x)
+                continue
+
+            if x['entry_time'] + 2 < rec_time:
+                self.requests.remove(x)
+                new_reqs.remove(x)
+                x['liveness'] -= 1
+                x['entry_time'] = time.time()
+                shopping_list = x['body']
+
+                if x['type'] == ClientMsgType.POST:
+                    shopping_list = json.loads(shopping_list)['uuid']
+
+                value, neighbours = self.ring.get_server(shopping_list)
+
+                neighbours.insert(0, value)
+
+                next_idx = neighbours.index(x['curr_node']) + 1
+
+                if (value is None and neighbours is None) or next_idx >= len(neighbours):
+                    message = format_msg("BROKER", "Servers offline", LoadbalMsgType.SV_OFFLINE)
+                    self.frontend.send_multipart(
+                        [identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")])
+                    return
+
+                x['liveness'] = 1
+                x['curr_node'] = neighbours[next_idx]
+
+                new_reqs.append(x)
+
+                original_req = dict(x)
+
+                del original_req['entry_time']
+                del original_req['liveness']
+                del original_req['curr_node']
+
+                print(x['identity'])
+                request = [x['curr_node'].encode("utf-8"), b"", x['identity'].encode("utf-8"), b"",
+                           json.dumps(original_req).encode("utf-8")]
+
+                self.backend.send_multipart(request)
+
+        self.requests = new_reqs
+
     def handle_client_message(self, identity, message):
-        print(message)
         shopping_list = message['body']
 
         if message['type'] == ClientMsgType.POST:
             shopping_list = json.loads(shopping_list)['uuid']
 
         value, neighbours = self.ring.get_server(shopping_list)
+
         if value is None and neighbours is None:
             message = format_msg("BROKER", "Servers offline", LoadbalMsgType.SV_OFFLINE)
             self.frontend.send_multipart([identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")])
             return
 
         request = [value.encode("utf-8"), b"", identity.encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
+        message['curr_node'] = value
+        message['liveness'] = 1
+        message['entry_time'] = time.time()
 
+        self.requests.append(message)
+        print(request)
         self.backend.send_multipart(request)
 
-
-        # expected an ACK after sending request to know it worked, add a timeout for the message to come (?)
-        # print(self.backend.recv_multipart())
 
     def send_message(self, socket, recipient_identity, sender_identity, message, msg_type: LoadbalMsgType):
         formatted_message = format_msg(sender_identity, message, msg_type.value)

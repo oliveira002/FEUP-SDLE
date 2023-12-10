@@ -23,9 +23,9 @@ logger = setup_logger(script_filename)
 PRIMARY_FRONTEND_ENDPOINT = '127.0.0.1:6000'
 BACKUP_FRONTEND_ENDPOINT = '127.0.0.1:6001'
 SERVERS = [PRIMARY_FRONTEND_ENDPOINT, BACKUP_FRONTEND_ENDPOINT]
-REQUEST_TIMEOUT = 1
+REQUEST_TIMEOUT = 20
 REQUEST_RETRIES = 3
-FAILOVER_DELAY = 2
+FAILOVER_DELAY = 5
 
 
 class Client:
@@ -34,7 +34,8 @@ class Client:
         self.poller = None
         self.retries_left = None
         self.socket = None
-        self.id = uuid4()
+        self.id = str(uuid4())
+        self.identity = "Client-" + self.id
         self.server_nr = 0
         self.context = zmq.Context()
 
@@ -60,9 +61,9 @@ class Client:
         sl.inc_or_add_item("bananas", 2, "1231-31-23123-12-33")
         sl.inc_or_add_item("cebolas", 3, "1231-31-23123-12-33")
         sl.dec_item("cebolas", 2, "1231-31-23123-12-33")
-        #sl.uuid = '815bf169-4d4b-455f-a8b1-b9dadeaea9e3'
-        #self.send_message(str(self.id), str(sl), ClientMsgType.POST)
-        self.send_message(str(self.id), str(sl.uuid), ClientMsgType.GET)
+        sl.uuid = '815bf169-4d4b-455f-a8b1-b9dadeaea9e3'
+        self.send_message(self.identity, str(sl), ClientMsgType.POST)
+        #self.send_message(self.identity, str(sl.uuid), ClientMsgType.GET)
 
         self.retries_left = REQUEST_RETRIES
         while True:
@@ -89,7 +90,7 @@ class Client:
 
                 self.kill_socket()
                 self.init_socket()
-                self.send_message(str(self.id), str(sl), ClientMsgType.POST)
+                #self.send_message(str(self.id), str(sl), ClientMsgType.POST)
 
     def send_message(self, identity, message, msg_type: ClientMsgType):
         formatted_message = format_msg(identity, message, msg_type.value)

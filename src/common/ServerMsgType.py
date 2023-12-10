@@ -14,3 +14,5 @@ class ServerMsgType(str, Enum):
     REPLICATE = "REPLICATE"
     ACK = "ACK"
     REBALANCE = "REBALANCE"
+    HANDOFF = "HANDOFF"
+    HANDOFF_RECV = "HANDOFF_RECV"

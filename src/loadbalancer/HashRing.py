@@ -64,7 +64,7 @@ class HashRing:
         neighbours = self.node_range(coordinator_key)
 
         neighbours = [self.ring[x] for x in neighbours if self.ring[x] != coordinator_identity]
-        neighbours = list(set(neighbours))
+        neighbours = list(dict.fromkeys(neighbours))
 
         return coordinator_identity, neighbours
 
@@ -120,6 +120,9 @@ class HashRing:
 
 
 #hash_ring = HashRing()
-#msg_1 = hash_ring.add_node("1")
-#msg_2 = hash_ring.add_node("2")
-#a = 2
+#msg_1 = hash_ring.add_node("Server@127.0.0.1:1225")
+#msg_1 = hash_ring.add_node("Server@127.0.0.1:1226")
+#msg_1 = hash_ring.add_node("Server@127.0.0.1:1227")
+#msg_1 = hash_ring.add_node("Server@127.0.0.1:1228")
+#msg_1 = hash_ring.add_node("Server@127.0.0.1:1229")
+#print(hash_ring.get_server('815bf169-4d4b-455f-a8b1-b9dadeaea9e3'))
