@@ -64,7 +64,7 @@ class Client:
         sl1.inc_or_add_item("cenouras", 1, replica)
         sl1.inc_or_add_item("banana", 2, replica)
         self.send_message(self.identity, str(sl1), ClientMsgType.POST)
-        #self.send_message(self.identity, str(sl.uuid), ClientMsgType.GET)
+        #self.send_message(self.identity, str(sl1.uuid), ClientMsgType.GET)
 
         self.retries_left = REQUEST_RETRIES
         while True:
