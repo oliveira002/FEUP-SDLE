@@ -91,39 +91,6 @@ class Server:
             sockets = dict(self.poller.poll(HEARTBEAT_INTERVAL * 1000))
 
             if self.socket in sockets and sockets.get(self.socket) == zmq.POLLIN:
-
-                new_reqs = list(self.requests)
-                rec_time = time.time()
-                for x in self.requests:
-                    shopping_list = x['body']['uuid']
-                    value, neighbours = self.ring.get_server(shopping_list)
-                    if x['entry_time'] + 3 < rec_time:
-                        next_idx = neighbours.index('Server@' + x['curr_node']) + 1
-                        next_node = neighbours[next_idx]
-                        self.requests.remove(x)
-                        new_reqs.remove(x)
-
-                        print("REPLICA NR:", x['replica'])
-                        x['liveness'] -= 1
-                        x['type'] = "HANDOFF"
-                        x['entry_time'] = time.time()
-                        x['curr_node'] = next_node.split('@', 1)[-1]
-                        neigh_ip = x['curr_node']
-
-                        new_reqs.append(x)
-
-                        try:
-                            print("Mandou para:", neigh_ip)
-                            self.socket_neigh.connect(f'tcp://{neigh_ip}')
-                            self.socket_neigh.send_json(x)
-                        except Exception as e:
-                            logger.error(f"Failed to connect to {neigh_ip}: {e}")
-                        finally:
-                            self.socket_neigh.disconnect(f'tcp://{neigh_ip}')
-                self.requests = new_reqs
-
-                self.check_requests(identity_neigh, message_neigh, rec_time)
-
                 frames = self.socket.recv_multipart()
                 if not frames:
                     break
@@ -516,8 +483,8 @@ class Server:
 
 
 def main():
-    #server = Server(int(sys.argv[1]))
-    server = Server(1227)
+    server = Server(int(sys.argv[1]))
+    #server = Server(1227)
     server.start()
     server.stop()
 
