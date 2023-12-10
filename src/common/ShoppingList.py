@@ -1,6 +1,8 @@
 import os
 import sys
 from uuid import uuid4
+
+from src.common.GCounter import GCounter
 from src.common.PNCounter import PNCounter
 
 # Define module
@@ -40,6 +42,21 @@ class ShoppingList:
         mergedSL = ShoppingList(a.uuid)
         mergedSL.items = mergedItems
         return mergedSL
+
+    @staticmethod
+    def fromJson(json):
+        sl = ShoppingList()
+        sl.uuid = json["uuid"]
+
+        items = dict()
+        for k, v in json["items"]:
+            pos = GCounter(v["pos"])
+            neg = GCounter(v["neg"])
+            pn = PNCounter(pos, neg)
+            items[k] = pn
+
+        sl.items = items
+        return sl
 
     def __str__(self):
         items = ", ".join(f"\"{key}\": {{{str(value)}}}" for key, value in self.items.items())
