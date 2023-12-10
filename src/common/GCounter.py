@@ -7,62 +7,23 @@ sys.path.append(current_path)
 
 
 class GCounter:
-    """
-    Simple Grow Only Counter CRDT implementation.
+    def __init__(self, counter):
+        self.counter = counter
 
-    ...
+    @staticmethod
+    def zero():
+        return GCounter({})
 
-    Attributes
-    ----------
-    value : int
-        positive integer counter value
+    def value(self):
+        return sum(self.counter.values(), 0)
 
-    Methods
-    -------
-    inc():
-        Increments the counter's value by 1.
-    query() -> int:
-        Returns the current value of the counter.
-    compare(gc2 : GCounter) -> bool:
-        Compares the value of a given GCounter with the callers' value.
-    merge(gc2 : GCounter):
-        Merges the state of a given GCounter with the state of the caller by getting the max of both counter values.
-    """
+    def inc(self, replica, value):
+        self.counter[replica] = self.counter.get(replica, 0) + value
 
-    value: int = None
-
-    def __init__(self):
-        self.value = 0
-
-    def inc(self):
-        """
-        Increments the counter's value by 1.
-        :return None:
-        """
-        self.value += 1
-
-    def query(self):
-        """
-        Returns the current value of the counter.
-        :return The current value of the counter:
-        """
-        return self.value
-
-    def compare(self, gc2: "GCounter"):
-        """
-        Compares the value of a given GCounter with the callers' value.
-        :param gc2 : GCounter:
-        :return : True, if caller's value > given counter's value, False otherwise:
-        """
-        return self.value > gc2.value
-
-    def merge(self, gc2: "GCounter"):
-        """
-        Merges the state of a given GCounter with the state of the caller by getting the max of both counter values.
-        :param gc2 : GCounter:
-        :return None:
-        """
-        self.value = max(self.value, gc2.value)
+    @staticmethod
+    def merge(a, b):
+        merged_counter = {k: max(a.counter.get(k, 0), b.counter.get(k, 0)) for k in set(a.counter) | set(b.counter)}
+        return GCounter(merged_counter)
 
     def __str__(self):
-        return f"{self.value}"
+        return str(self.counter)

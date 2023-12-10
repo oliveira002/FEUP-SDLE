@@ -1,7 +1,7 @@
 import os
 import sys
 
-from src.common.PNCounter import PNCounter
+from src.dasdasd.PNCounter import PNCounter
 
 # Define module
 current_path = os.path.dirname(__file__) + '/../..'

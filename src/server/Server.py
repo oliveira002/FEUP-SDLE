@@ -383,7 +383,6 @@ class Server:
     def create_or_load_db_file(self, file_path):
         current_directory = os.path.dirname(os.path.abspath(__file__))
         file_path = os.path.join(current_directory, file_path)
-
         try:
             if os.path.exists(file_path):
                 with open(file_path, 'r') as file:
@@ -428,7 +427,9 @@ class Server:
 
         neigh_ip = receiver.split('@', 1)[-1]
 
-        with open(self.h_path, 'w') as file:
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(current_directory, self.h_path)
+        with open(file_path, 'w') as file:
             json.dump(data, file, indent=2)
 
         if len(shopping_lists) == 0:
@@ -445,9 +446,6 @@ class Server:
             self.socket_neigh.disconnect(f'tcp://{neigh_ip}')
 
     def persist_to_json(self, new_object, file_path):
-        current_directory = os.path.dirname(os.path.abspath(__file__))
-        file_path = os.path.join(current_directory, file_path)
-
         data = self.create_or_load_db_file(file_path)
 
         # Check if the given JSON object exists in the list by uuid
@@ -484,7 +482,7 @@ class Server:
 
 def main():
     server = Server(int(sys.argv[1]))
-    #server = Server(1227)
+    #server = Server(1229)
     server.start()
     server.stop()
 
