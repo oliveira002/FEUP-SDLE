@@ -27,6 +27,23 @@
           }
         }
       }
+    },
+    {
+      "uuid": "be7ddb61-23cf-475c-b5d2-b28f7bf9fa5b",
+      "items": {
+        "bananas": {
+          "quantity": 0,
+          "timestamps": {
+            "5fb2f941-0c40-4aef-b48f-746540e3c723": 2
+          }
+        },
+        "pão de forma": {
+          "quantity": 11,
+          "timestamps": {
+            "5fb2f941-0c40-4aef-b48f-746540e3c723": 4
+          }
+        }
+      }
     }
   ]
 }
