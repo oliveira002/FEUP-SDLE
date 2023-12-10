@@ -56,13 +56,14 @@ class Client:
         self.init_socket()
         logger.info(f"Connecting to broker at {SERVERS[self.server_nr]}")
 
-        sl = ShoppingList()
-        sl.inc_or_add_item("bananas", 1, "1231-31-23123-12-33")
-        sl.inc_or_add_item("bananas", 2, "1231-31-23123-12-33")
-        sl.inc_or_add_item("cebolas", 3, "1231-31-23123-12-33")
-        sl.dec_item("cebolas", 2, "1231-31-23123-12-33")
-        sl.uuid = '815bf169-4d4b-455f-a8b1-b9dadeaea9e3'
-        self.send_message(self.identity, str(sl), ClientMsgType.POST)
+        sl1 = ShoppingList("815bf169-4d4b-455f-a8b1-b9dadeaea9e3")
+        replica = self.id
+        sl1.inc_or_add_item("banana", 8, replica)
+        sl1.inc_or_add_item("cebolas", 4, replica)
+        sl1.dec_item("banana", 2, replica)
+        sl1.inc_or_add_item("cenouras", 1, replica)
+        sl1.inc_or_add_item("banana", 2, replica)
+        self.send_message(self.identity, str(sl1), ClientMsgType.POST)
         #self.send_message(self.identity, str(sl.uuid), ClientMsgType.GET)
 
         self.retries_left = REQUEST_RETRIES

@@ -464,6 +464,8 @@ class Server:
             existing_list.append(new_object)
 
         # Write the updated data back to the file with indentation
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(current_directory, file_path)
         with open(file_path, 'w') as file:
             json.dump(data, file, indent=2)
 
