@@ -49,7 +49,7 @@ class ShoppingList:
         sl.uuid = json["uuid"]
 
         items = dict()
-        for k, v in json["items"]:
+        for k, v in json["items"].items():
             pos = GCounter(v["pos"])
             neg = GCounter(v["neg"])
             pn = PNCounter(pos, neg)
