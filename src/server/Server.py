@@ -96,7 +96,10 @@ class Server:
 
                 identity = frames[1].decode("utf-8")
                 message = json.loads(frames[3].decode("utf-8"))
-                logger.info(f"Received message \"{message}\" from {identity}")
+                if message["type"] != LoadbalMsgType.HEARTBEAT:
+                    logger.info(f"Received message \"{message}\" from {identity}")
+                else:
+                    logger.debug(f"Received message \"{message}\" from {identity}")
 
                 self.handle_message(identity, message)
                 interval = INTERVAL_INIT
@@ -113,7 +116,7 @@ class Server:
                     self.loadbalLiveness = HEARTBEAT_LIVENESS
             if time.time() > heartbeat_at:
                 heartbeat_at = time.time() + HEARTBEAT_INTERVAL
-                # logger.info("Sent heartbeat to load balancer")
+                logger.debug("Sent heartbeat to load balancer")
                 self.send_message(self.socket, "HEARTBEAT", ServerMsgType.HEARTBEAT, str(self.hostname))
 
     def generate_id(self):
@@ -136,14 +139,19 @@ class Server:
         formatted_message = format_msg(identity if identity is not None else str(self.hostname), message,
                                        msg_type.value)
         socket.send_json(formatted_message)
-        logger.info(f"Sent message \"{formatted_message}\"")
+        if formatted_message["type"] != ServerMsgType.HEARTBEAT:
+            logger.info(f"Sent message \"{formatted_message}\"")
+        else:
+            logger.debug(f"Sent message \"{formatted_message}\"")
+
 
     def receive_message(self):
         try:
             _, identity, _, message = self.socket.recv_multipart()
             message = json.loads(message)
             identity = identity.decode("utf-8")
-            logger.info(f"Received message \"{message}\" from {identity}")
+            if message["type"] != ServerMsgType.HEARTBEAT:
+                logger.info(f"Received message \"{message}\" from {identity}")
             return [identity, message]
         except zmq.error.ZMQError as e:
             logger.error("Error receiving message:", e)
@@ -171,7 +179,7 @@ class Server:
             # self.replicate_data(neighbours, merged)
 
         elif message["type"] == LoadbalMsgType.HEARTBEAT:
-            logger.info("Received load balancer heartbeat")
+            logger.debug("Received load balancer heartbeat")
             pass
 
         elif message['type'] == ServerMsgType.REPLICATE:
@@ -187,7 +195,6 @@ class Server:
             # self.persist_to_json(message['body'])
 
         elif message['type'] == "JOIN_RING":
-            print(message)
             updates = self.ring.add_node(message['node'])
 
             # print(list(self.ring.ring.keys()))
@@ -235,11 +242,11 @@ class Server:
 
             except Exception as e:
                 logger.error(f"Failed to connect to {receiver}: {e}")
+            finally:
+                self.socket_neigh.disconnect(f'tcp://{receiver}')
 
     def get_shopping_lists_range(self, min_hash, max_hash):
         data = self.create_or_load_db_file()
-        print(data)
-
         if max_hash == -1:
             filtered_lists = [shopping_list for shopping_list in data['ShoppingLists']
                               if min_hash < self.hash_function(shopping_list['uuid'])]
@@ -247,7 +254,7 @@ class Server:
 
         filtered_lists = [shopping_list for shopping_list in data['ShoppingLists']
                           if min_hash < self.hash_function(shopping_list['uuid']) < max_hash]
-        
+
         return filtered_lists
 
     def create_or_load_db_file(self):
@@ -280,7 +287,9 @@ class Server:
         return None
 
     def persist_to_json(self, new_object):
-        file_path = f"shoppinglists/{self.port}.json"
+        file_path = f"shoppinglists\{self.port}.json"
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(current_directory, file_path)
 
         data = self.create_or_load_db_file()
 
@@ -318,7 +327,7 @@ class Server:
 
 def main():
     server = Server(int(sys.argv[1]))
-    # server = Server(1226)
+    #server = Server(1229)
     server.start()
     server.stop()
 
