@@ -258,19 +258,14 @@ class LoadBalancer:
                 x['entry_time'] = time.time()
                 shopping_list = x['body']
 
-                print("MESSAGE!!!!!!!!!!!!!!!!!!!!!!!!", x)
-
                 if x['type'] == ClientMsgType.POST:
                     shopping_list = json.loads(shopping_list)['uuid']
-                print("SHOPPING!!!!!!!!!!!!!!!!!!!!!!!!", shopping_list)
 
                 value, neighbours = self.ring.get_server(shopping_list)
 
                 neighbours.insert(0, value)
-                print("NEIGH!!!!!!!!!!!!!!!!!!!!!!!!", neighbours)
 
                 next_idx = neighbours.index(x['curr_node']) + 1
-                print("NEXT!!!!!!!!!!!!!!!!!!!!!!!!", next_idx)
 
                 if (value is None and neighbours is None) or next_idx >= len(neighbours):
                     message = format_msg("BROKER", "Servers offline", LoadbalMsgType.SV_OFFLINE)
