@@ -114,12 +114,12 @@ class Server:
                     self.kill_sockets()
                     self.init_sockets()
                     self.loadbalLiveness = HEARTBEAT_LIVENESS
-            '''
+
             if time.time() > heartbeat_at:
                 heartbeat_at = time.time() + HEARTBEAT_INTERVAL
                 logger.debug("Sent heartbeat to load balancer")
                 self.send_message(self.socket, "HEARTBEAT", ServerMsgType.HEARTBEAT, str(self.hostname))
-            '''
+
 
     def generate_id(self):
         unique_id = str(uuid4())
