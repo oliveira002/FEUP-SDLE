@@ -200,7 +200,6 @@ class LoadBalancer:
                 else:
                     nodes = list(msg['nodes'])
                     if len(nodes) > 0 and nodes != self.ring.nodes:
-                        print(msg)
                         new_ring = HashRing()
                         new_ring.build_ring(nodes)
                         self.ring = new_ring
