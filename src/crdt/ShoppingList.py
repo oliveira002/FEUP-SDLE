@@ -25,6 +25,11 @@ class ShoppingList:
         item.dec(replica, quantity)
         self.items[item_name] = item
 
+    @staticmethod
+    def merge(a, b):
+        return
+
     def __str__(self):
         items = ", ".join(f"\"{key}\": {{{str(value)}}}" for key, value in self.items.items())
         return f"{{\"uuid\":\"{self.uuid}\", \"items\":{{{items}}}}}".replace("\'", "\"")
+

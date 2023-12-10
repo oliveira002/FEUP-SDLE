@@ -22,11 +22,6 @@ class ShoppingList{
         this.items.set(item_name, item)
     }
 
-    toString(){
-        let items = Array.from(this.items.entries()).map(([key, value]) => `"${key}": {${value.toString()}}`);
-        return "{\"uuid\":\"" + this.uuid + "\", \"items\": {" + items + "}}"
-    }
-
     static merge(a, b){
         let items = Array.from(a.items.keys()).concat(Array.from(b.items.keys()))
         const uniqueItems = new Set(items);
@@ -46,6 +41,12 @@ class ShoppingList{
         mergedSL.items = mergedItems
         return mergedSL
     }
+
+    toString(){
+        let items = Array.from(this.items.entries()).map(([key, value]) => `"${key}": {${value.toString()}}`);
+        return "{\"uuid\":\"" + this.uuid + "\", \"items\": {" + items + "}}"
+    }
+
 
 }
 
