@@ -1,5 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const PNCounter = require("./PNCounter");
+const GCounter = require("./GCounter");
 
 class ShoppingList{
     constructor(uuid=null) {
@@ -40,6 +41,22 @@ class ShoppingList{
         let mergedSL = new ShoppingList(a.uuid)
         mergedSL.items = mergedItems
         return mergedSL
+    }
+
+    static fromJson(json){
+        let sl = new ShoppingList()
+        sl.uuid = json["uuid"]
+
+        let items = new Map()
+        Object.keys(json["items"]).forEach(key => {
+            let pos = new GCounter(json["items"][key]["pos"])
+            let neg = new GCounter(json["items"][key]["neg"])
+            let pn = new PNCounter(pos, neg)
+            items.set(key, pn)
+        })
+
+        sl.items = items
+        return sl
     }
 
     toString(){
