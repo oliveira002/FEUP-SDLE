@@ -1,4 +1,5 @@
 import json
+import sys
 import time
 from HashRing import HashRing
 import zmq
@@ -8,6 +9,10 @@ from src.common.ServerMsgType import ServerMsgType
 from src.common.ClientMsgType import ClientMsgType
 from src.common.utils import setup_logger, format_msg
 from src.loadbalancer.BinaryLBState import LoadbalancerState, BStarException, lbfsm_state_map, BinaryLBState
+
+# Define module
+current_path = os.path.dirname(__file__) + '/../..'
+sys.path.append(current_path)
 
 # Logger setup
 script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
@@ -276,8 +281,12 @@ class LoadBalancer:
 def main():
     roles = ["primary", "backup", "p", "b"]
     role = None
-    while role not in roles:
-        role = str(input("Choose a role between \"primary\" and \"backup\": "))
+
+    try:
+        role = sys.argv[1]
+    except:
+        while role not in roles:
+            role = str(input("Choose a role between \"primary\" and \"backup\": "))
 
     if role == "p":
         role = "primary"

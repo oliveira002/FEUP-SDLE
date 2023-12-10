@@ -1,5 +1,11 @@
+import os
+import sys
+
 from src.common.GCounter import GCounter
 
+# Define module
+current_path = os.path.dirname(__file__) + '/../..'
+sys.path.append(current_path)
 
 class PNCounter:
     """

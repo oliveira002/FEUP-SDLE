@@ -1,5 +1,11 @@
+import os
+import sys
 from uuid import uuid4
 from src.common.ShoppingListItem import ShoppingListItem
+
+# Define module
+current_path = os.path.dirname(__file__) + '/../..'
+sys.path.append(current_path)
 
 
 class ShoppingList:

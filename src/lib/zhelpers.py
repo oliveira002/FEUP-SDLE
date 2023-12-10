@@ -3,12 +3,16 @@
 Helper module for example applications. Mimics ZeroMQ Guide's zhelpers.h.
 """
 from __future__ import print_function
-
 import binascii
 import os
+import sys
 from random import randint
-
 import zmq
+
+# Define module
+current_path = os.path.dirname(__file__) + '/../..'
+sys.path.append(current_path)
+
 
 def socket_set_hwm(socket, hwm=-1):
     """libzmq 2/3/4 compatible sethwm"""

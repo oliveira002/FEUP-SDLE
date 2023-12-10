@@ -11,6 +11,10 @@ from src.common.ServerMsgType import ServerMsgType
 from src.common.ShoppingList import ShoppingList
 from src.common.utils import setup_logger, format_msg
 
+# Define module
+current_path = os.path.dirname(__file__) + '/../..'
+sys.path.append(current_path)
+
 # Logger setup
 script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
 logger = setup_logger(script_filename)
@@ -33,7 +37,7 @@ class Client:
         self.id = uuid4()
         self.server_nr = 0
         self.context = zmq.Context()
-    
+
     def init_socket(self):
         self.socket = self.context.socket(zmq.REQ)
         self.socket.identity = u"Client-{}".format(str(self.id)).encode("ascii")
@@ -41,12 +45,12 @@ class Client:
 
         self.poller = zmq.Poller()
         self.poller.register(self.socket, zmq.POLLIN)
-    
+
     def kill_socket(self):
         self.poller.unregister(self.socket)
         self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.close()
-    
+
     def start(self):
         self.init_socket()
         logger.info(f"Connecting to broker at {SERVERS[self.server_nr]}")
@@ -57,13 +61,13 @@ class Client:
         sl.inc_or_add_item("cebolas", 3, "1231-31-23123-12-33")
         sl.dec_item("cebolas", 2, "1231-31-23123-12-33")
         sl.uuid = '815bf169-4d4b-455f-a8b1-b9dadeaea9e3'
-        #self.send_message(str(self.id), str(sl), ClientMsgType.POST)
-        #self.send_message(str(self.id), sl.uuid, ClientMsgType.GET)
+        self.send_message(str(self.id), str(sl), ClientMsgType.POST)
+        # self.send_message(str(self.id), sl.uuid, ClientMsgType.GET)
 
         self.retries_left = REQUEST_RETRIES
         while True:
             sockets = dict(self.poller.poll(REQUEST_TIMEOUT * 1000))
-            #if (self.socket.poll(REQUEST_TIMEOUT * 1000) & zmq.POLLIN) != 0:
+            # if (self.socket.poll(REQUEST_TIMEOUT * 1000) & zmq.POLLIN) != 0:
             if self.socket in sockets and sockets.get(self.socket) == zmq.POLLIN:
                 message = self.receive_message()
                 message = self.handle_message(message)
@@ -86,7 +90,6 @@ class Client:
                 self.kill_socket()
                 self.init_socket()
                 self.send_message(str(self.id), str(sl), ClientMsgType.POST)
-
 
     def send_message(self, identity, message, msg_type: ClientMsgType):
         formatted_message = format_msg(identity, message, msg_type.value)

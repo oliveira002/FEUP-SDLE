@@ -5,12 +5,19 @@ import json
 from uuid import *
 import sys
 import hashlib
+
+# Define module
+current_path = os.path.dirname(__file__) + '/../..'
+sys.path.append(current_path)
+
 from src.loadbalancer.HashRing import HashRing
 from hashlib import sha256
 from src.common.ClientMsgType import ClientMsgType
 from src.common.LoadbalMsgType import LoadbalMsgType
 from src.common.ServerMsgType import ServerMsgType
 from src.common.utils import setup_logger, format_msg
+
+
 
 # Logger setup
 script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
@@ -128,7 +135,8 @@ class Server:
                 logger.error(f"Failed to connect to {neighbour}: {e}")
 
     def send_message(self, socket, message, msg_type: ServerMsgType, identity=None):
-        formatted_message = format_msg(identity if identity is not None else str(self.hostname), message, msg_type.value)
+        formatted_message = format_msg(identity if identity is not None else str(self.hostname), message,
+                                       msg_type.value)
         socket.send_json(formatted_message)
         logger.info(f"Sent message \"{formatted_message}\"")
 
@@ -145,7 +153,7 @@ class Server:
 
     def handle_message(self, identity, message):
         if message["type"] == ClientMsgType.GET:
-            #self.send_message(self.socket, "ALIVE", ServerMsgType.ACK, str(self.hostname))
+            # self.send_message(self.socket, "ALIVE", ServerMsgType.ACK, str(self.hostname))
             shopping_list_id = message['body']
 
             shopping_list = self.read_from_json(shopping_list_id)
@@ -157,12 +165,12 @@ class Server:
                 self.send_message(self.socket, shopping_list, ServerMsgType.REPLY, identity)
 
         elif message["type"] == ClientMsgType.POST:
-            #self.send_message(self.socket, "ALIVE", ServerMsgType.ACK, str(self.hostname))
+            # self.send_message(self.socket, "ALIVE", ServerMsgType.ACK, str(self.hostname))
             shopping_list = json.loads(message['body'])
             merged = self.persist_to_json(shopping_list)
             self.send_message(self.socket, "Modified Shopping List Correctly", ServerMsgType.REPLY, identity)
             _, neighbours = self.ring.get_server(shopping_list['uuid'])
-            #self.replicate_data(neighbours, merged)
+            # self.replicate_data(neighbours, merged)
 
         elif message["type"] == LoadbalMsgType.HEARTBEAT:
             logger.info("Received load balancer heartbeat")
@@ -170,7 +178,7 @@ class Server:
 
         elif message['type'] == ServerMsgType.REPLICATE:
             print(message)
-            #self.persist_to_json(message['body'])
+            # self.persist_to_json(message['body'])
 
         elif message['type'] == ServerMsgType.REBALANCE:
             shopping_lists = message['body']
@@ -178,14 +186,14 @@ class Server:
             for sl in shopping_lists:
                 self.persist_to_json(sl)
 
-            #self.persist_to_json(message['body'])
+            # self.persist_to_json(message['body'])
 
         elif message['type'] == "JOIN_RING":
             print(message)
             updates = self.ring.add_node(message['node'])
 
-            #print(list(self.ring.ring.keys()))
-            #print(list(self.ring.ring.values()))
+            # print(list(self.ring.ring.keys()))
+            # print(list(self.ring.ring.values()))
 
             self.send_data_on_join(updates)
 
@@ -232,8 +240,6 @@ class Server:
 
             except Exception as e:
                 logger.error(f"Failed to connect to {receiver}: {e}")
-
-
 
     def get_shopping_lists_range(self, min_hash, max_hash):
         data = self.create_or_load_db_file()
@@ -309,12 +315,12 @@ class Server:
     def hash_function(self, key):
         return sha256(key.encode('utf-8')).hexdigest()
 
+
 def main():
-    #server = Server(int(sys.argv[1]))
-    server = Server(1226)
+    server = Server(int(sys.argv[1]))
+    # server = Server(1226)
     server.start()
     server.stop()
-
 
 
 if __name__ == "__main__":

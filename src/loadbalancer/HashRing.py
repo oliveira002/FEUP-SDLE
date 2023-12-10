@@ -1,9 +1,13 @@
 import json
+import os
 from hashlib import sha256
 from sortedcollections import SortedDict
-from itertools import islice
 import bisect
 import sys
+
+# Define module
+current_path = os.path.dirname(__file__) + '/../..'
+sys.path.append(current_path)
 
 HASH_SPACE = sys.maxsize
 NUM_VNODES = 4

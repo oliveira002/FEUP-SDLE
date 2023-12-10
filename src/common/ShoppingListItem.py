@@ -1,6 +1,11 @@
-import json
+import os
+import sys
 
 from src.common.PNCounter import PNCounter
+
+# Define module
+current_path = os.path.dirname(__file__) + '/../..'
+sys.path.append(current_path)
 
 
 class ShoppingListItem:

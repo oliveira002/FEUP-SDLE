@@ -1,7 +1,10 @@
 import logging
+import os
+import sys
 
-from src.common.ClientMsgType import ClientMsgType
-from src.common.ServerMsgType import ServerMsgType
+# Define module
+current_path = os.path.dirname(__file__) + '/../..'
+sys.path.append(current_path)
 
 
 def setup_logger(logger_name):

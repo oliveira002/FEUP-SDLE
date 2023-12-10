@@ -1,3 +1,11 @@
+import os
+import sys
+
+# Define module
+current_path = os.path.dirname(__file__) + '/../..'
+sys.path.append(current_path)
+
+
 class GCounter:
     """
     Simple Grow Only Counter CRDT implementation.

@@ -1,4 +1,10 @@
+import os
+import sys
 from enum import Enum
+
+# Define module
+current_path = os.path.dirname(__file__) + '/../..'
+sys.path.append(current_path)
 
 
 class BinaryLBState(str, Enum):
@@ -18,7 +24,7 @@ class BinaryLBState(str, Enum):
 
 lbfsm_state_map = {
     BinaryLBState.SELF_PRIMARY: {
-        BinaryLBState.PEER_BACKUP: ("Connected to backup, ready as active", BinaryLBState.SELF_ACTIVE),
+        BinaryLBState.PEER_BACKUP: ("Connected to backup (passive), ready as active", BinaryLBState.SELF_ACTIVE),
         BinaryLBState.PEER_ACTIVE: ("Connected to backup (active), ready as passive", BinaryLBState.SELF_PASSIVE)
     },
     BinaryLBState.SELF_BACKUP: {
