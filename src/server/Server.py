@@ -16,6 +16,7 @@ from src.common.ClientMsgType import ClientMsgType
 from src.common.LoadbalMsgType import LoadbalMsgType
 from src.common.ServerMsgType import ServerMsgType
 from src.common.utils import setup_logger, format_msg
+from src.common.ShoppingList import ShoppingList
 
 # Logger setup
 script_filename = os.path.splitext(os.path.basename(__file__))[0] + ".py"
@@ -210,8 +211,10 @@ class Server:
 
         elif message["type"] == ClientMsgType.POST:
             shopping_list = json.loads(message['body'])
-            merged = self.persist_to_json(shopping_list, self.path)
-            self.send_message(self.socket, merged, ServerMsgType.REPLY_POST, identity)
+
+            sp_list_obj = ShoppingList.fromJson(shopping_list)
+            merged = self.persist_to_json(sp_list_obj, self.path)
+            self.send_message(self.socket, json.loads(str(merged)), ServerMsgType.REPLY_POST, identity)
 
             value, neighbours = self.ring.get_server(shopping_list['uuid'])
             neighbours.insert(0, value)
@@ -224,19 +227,22 @@ class Server:
 
         elif message['type'] == ServerMsgType.REPLICATE:
             self.send_message(self.socket_neigh, "ACK", ServerMsgType.ACK)
-            self.persist_to_json(message['body'], self.path)
+            sp_obj = ShoppingList.fromJson(message['body'])
+            self.persist_to_json(sp_obj, self.path)
 
         elif message['type'] == ServerMsgType.REBALANCE:
             shopping_lists = message['body']
 
             for sl in shopping_lists:
-                self.persist_to_json(sl, self.path)
+                sp_obj = ShoppingList.fromJson(sl)
+                self.persist_to_json(sp_obj, self.path)
 
         elif message['type'] == ServerMsgType.HANDOFF_RECV:
             shopping_lists = message['body']
 
             for sl in shopping_lists:
-                self.persist_to_json(sl, self.path)
+                sp_obj = ShoppingList.fromJson(sl)
+                self.persist_to_json(sp_obj, self.path)
 
         elif message['type'] == "JOIN_RING":
             node_ip = message['node'].split('@', 1)[-1]
@@ -254,7 +260,7 @@ class Server:
             print(message)
 
         elif message['type'] == ServerMsgType.HANDOFF:
-            self.persist_to_json(message['body'], self.h_path)
+            self.persist_json_handoff(message['body'], self.h_path)
 
         elif message['type'] == ServerMsgType.ACK:
             print("Received ACK")
@@ -320,7 +326,7 @@ class Server:
 
             if self.identity == actual_nodes2[i]:
                 handoff_msg = {'uuid': shopping_list['uuid'], 'destination': supposed_nodes2[i]}
-                self.persist_to_json(handoff_msg, self.path)
+                self.persist_json_handoff(handoff_msg, self.h_path)
                 continue
 
             neigh_ip = actual_nodes2[i].split('@', 1)[-1]
@@ -379,6 +385,32 @@ class Server:
                           if min_hash < self.hash_function(shopping_list['uuid']) < max_hash]
 
         return filtered_lists
+
+    def persist_json_handoff(self, new_object, file_path):
+        data = self.create_or_load_db_file(file_path)
+
+        # Check if the given JSON object exists in the list by uuid
+        existing_list = data.get("ShoppingLists", [])
+        uuid_to_check = new_object.get("uuid")
+
+        object_exists = any(obj.get("uuid") == uuid_to_check for obj in existing_list)
+
+        if object_exists:
+            for i, obj in enumerate(existing_list):
+                if obj.get("uuid") == uuid_to_check:
+                    new_object = self.merge(obj, new_object)
+                    existing_list[i] = new_object
+        else:
+            # If the object doesn't exist, append to the ShoppingLists list
+            existing_list.append(new_object)
+
+        # Write the updated data back to the file with indentation
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        file_path = os.path.join(current_directory, file_path)
+        with open(file_path, 'w') as file:
+            json.dump(data, file, indent=2)
+
+        return new_object
 
     def create_or_load_db_file(self, file_path):
         current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -450,18 +482,19 @@ class Server:
 
         # Check if the given JSON object exists in the list by uuid
         existing_list = data.get("ShoppingLists", [])
-        uuid_to_check = new_object.get("uuid")
+        uuid_to_check = new_object.uuid
 
         object_exists = any(obj.get("uuid") == uuid_to_check for obj in existing_list)
 
         if object_exists:
             for i, obj in enumerate(existing_list):
                 if obj.get("uuid") == uuid_to_check:
-                    new_object = self.merge(obj, new_object)
-                    existing_list[i] = new_object
+                    exist_obj = ShoppingList.fromJson(obj)
+                    merged = ShoppingList.merge(exist_obj, new_object)
+                    existing_list[i] = json.loads(str(merged))
         else:
             # If the object doesn't exist, append to the ShoppingLists list
-            existing_list.append(new_object)
+            existing_list.append(json.loads(str(new_object)))
 
         # Write the updated data back to the file with indentation
         current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -483,8 +516,8 @@ class Server:
 
 
 def main():
-    server = Server(int(sys.argv[1]))
-    #server = Server(1229)
+    #server = Server(int(sys.argv[1]))
+    server = Server(1229)
     server.start()
     server.stop()
 
