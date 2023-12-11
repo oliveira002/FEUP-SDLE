@@ -29,11 +29,11 @@ start "Server@1225" "venv\Scripts\python.exe" "src\server\Server.py" 1225
 timeout /t 1 /nobreak > NUL
 start "Server@1226" "venv\Scripts\python.exe" "src\server\Server.py" 1226
 timeout /t 1 /nobreak > NUL
-start "Server@1227" "venv\Scripts\python.exe" "src\server\Server.py" 1227
+::start "Server@1227" "venv\Scripts\python.exe" "src\server\Server.py" 1227
 timeout /t 1 /nobreak > NUL
-start "Server@1228" "venv\Scripts\python.exe" "src\server\Server.py" 1228
+::start "Server@1228" "venv\Scripts\python.exe" "src\server\Server.py" 1228
 timeout /t 1 /nobreak > NUL
-start "Server@1229" "venv\Scripts\python.exe" "src\server\Server.py" 1229
+::start "Server@1229" "venv\Scripts\python.exe" "src\server\Server.py" 1229
 timeout /t 1 /nobreak > NUL
 
 REM Close the virtual environment

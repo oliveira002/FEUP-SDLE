@@ -142,17 +142,16 @@ class Server:
             #print(self.requests)
             shopping_list = x['body']['uuid']
             value, neighbours = self.ring.get_server(shopping_list)
-            print(neighbours)
+            #print(neighbours)
             neighbours.insert(0, value)
 
             if x['curr_node'] == identity and x['entry_time'] == message['entry_time']:
                 next_idx = neighbours.index('Server@' + x['curr_node']) + 1
                 next_node = neighbours[next_idx]
-                print("Recebeu a tempo", x['curr_node'])
+                #print("Recebeu a tempo", x['curr_node'])
                 message['replica'] += 1
                 if message['replica'] == 3:
                     self.requests.remove(x)
-                    print("OLAOALOA")
                     new_reqs.remove(x)
                     self.requests = new_reqs
                     continue
@@ -257,13 +256,15 @@ class Server:
             self.ring.build_ring(nodes)
 
         elif message['type'] == "LEAVE_RING":
-            print(message)
+            #print(message)
+            pass
 
         elif message['type'] == ServerMsgType.HANDOFF:
             self.persist_json_handoff(message['body'], self.h_path)
 
         elif message['type'] == ServerMsgType.ACK:
-            print("Received ACK")
+            #print("Received ACK")
+            pass
 
         else:
             logger.error("Invalid message received: \"%s\"", message)
@@ -286,7 +287,7 @@ class Server:
             if success_tries == max_tries:
                 break
 
-            print("CUR NEIGHBOURS: ", neigh)
+            #print("CUR NEIGHBOURS: ", neigh)
             neigh_ip = neigh.split('@', 1)[-1]
 
             try:
@@ -302,7 +303,7 @@ class Server:
                         actual_nodes.append(neigh)
                         success_tries += 1
 
-                    print(f"Received message: {ack_res}")
+                    #print(f"Received message: {ack_res}")
                 else:
                     print("No message received within 2 seconds.")
 
@@ -311,16 +312,16 @@ class Server:
             finally:
                 self.socket_neigh.disconnect(f'tcp://{neigh_ip}')
 
-        print("SUPPOSED:", supposed_nodes)
-        print("ORIGINAL:", actual_nodes)
+        #print("SUPPOSED:", supposed_nodes)
+        #print("ORIGINAL:", actual_nodes)
 
         supposed_nodes2 = [item for item in supposed_nodes if item not in actual_nodes]
         actual_nodes2 = [item for item in actual_nodes if item not in supposed_nodes]
 
         supposed_nodes2 = supposed_nodes2[:len(actual_nodes2)]
 
-        print("SUPPOSED:", supposed_nodes2)
-        print("ORIGINAL:", actual_nodes2)
+        #print("SUPPOSED:", supposed_nodes2)
+        #print("ORIGINAL:", actual_nodes2)
 
         for i in range(len(supposed_nodes2)):
 
@@ -516,8 +517,8 @@ class Server:
 
 
 def main():
-    #server = Server(int(sys.argv[1]))
-    server = Server(1229)
+    server = Server(int(sys.argv[1]))
+    #server = Server(1229)
     server.start()
     server.stop()
 

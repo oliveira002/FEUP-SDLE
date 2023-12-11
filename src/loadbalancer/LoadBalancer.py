@@ -238,14 +238,15 @@ class LoadBalancer:
             request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
             self.frontend.send_multipart(request)
         elif message['type'] == "ACK":
-            print("RECEIVEDDDD")
+            #print("RECEIVEDDDD")
+            pass
         elif message['type'] == ServerMsgType.HEARTBEAT:
             pass
 
     def check_requests(self, identity, message, rec_time):
         new_reqs = list(self.requests)
         for x in self.requests:
-            print(x)
+            #print(x)
             if identity == x['curr_node'] and message['identity'] == x['identity']:
                 self.requests.remove(x)
                 new_reqs.remove(x)
@@ -284,7 +285,7 @@ class LoadBalancer:
                 del original_req['liveness']
                 del original_req['curr_node']
 
-                print(x['identity'])
+                #print(x['identity'])
                 request = [x['curr_node'].encode("utf-8"), b"", x['identity'].encode("utf-8"), b"",
                            json.dumps(original_req).encode("utf-8")]
 
@@ -311,7 +312,7 @@ class LoadBalancer:
         message['entry_time'] = time.time()
 
         self.requests.append(message)
-        print(request)
+        #print(request)
         self.backend.send_multipart(request)
 
 

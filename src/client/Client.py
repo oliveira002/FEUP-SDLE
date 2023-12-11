@@ -75,7 +75,7 @@ class Client:
                 message = self.handle_message(message)
                 if message:
                     break
-                print(message)
+                #print(message)
             else:
                 self.retries_left -= 1
                 if self.retries_left == 0:
