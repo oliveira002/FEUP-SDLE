@@ -3,7 +3,9 @@ const path = require('path');
 const zmq = require('zeromq');
 const { v4: uuidv4 } = require('uuid');
 var json = require('json');
-
+const GCounter = require("./src/js/CRDTs/GCounter");
+const PNCounter = require("./src/js/CRDTs/PNCounter");
+const ShoppingList = require("./src/js/CRDTs/ShoppingList");
 
 
 
@@ -33,10 +35,10 @@ class Client {
 
 
     this.socket.on('message', (msg) => {
-      const receivedMessage = JSON.parse(msg.toString());
-      console.log('Received message:', receivedMessage);
-      // Send the received message to the renderer process
-      mainWindow.webContents.send('zmqMessage', receivedMessage);
+      let message = JSON.parse(msg.toString());
+      console.log('Received message1:', message);
+      
+      mainWindow.webContents.send('zmqMessage', message);
     });
     
     /*

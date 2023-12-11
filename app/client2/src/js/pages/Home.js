@@ -8,13 +8,19 @@ import { fetchShoppingLists } from "../utils";
 import ButtonGroup from '@mui/material/ButtonGroup';
 const { ipcRenderer } = window.require('electron');
 import { v4 as uuidv4 } from 'uuid';
+
+
+
 const Home = () => {
+
     const errorMessage= "Error couldn't find it";
     const [error, setError] = useState(false); 
+
    
 
     // Listen for the response from the main process
     ipcRenderer.on('zmqMessage', (event, information) => {
+        console.log('Received message from main process', information);
         if(information.body === errorMessage){
             setError(true);
         }else{
@@ -156,3 +162,4 @@ const Home = () => {
 };
 
 export default Home;
+

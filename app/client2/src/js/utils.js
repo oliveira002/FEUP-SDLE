@@ -84,13 +84,14 @@ export const checkLogin = async (username) => {
             parsedData.ShoppingLists[index] = shoppingList;
         } else {
             // Add a new shopping list
+           
             parsedData.ShoppingLists.push(shoppingList);
         }
 
         console.log("Parsed Data", parsedData)
 
         // Write the updated data back to the file
-        fs.writeFileSync(filePath, JSON.stringify(parsedData, null, 2), 'utf-8');
+        fs.writeFileSync(filePath, JSON.stringify(parsedData, null, 2));
         console.log('Shopping list saved successfully!');
     } catch (error) {
         console.error('Error saving shopping list:', error);

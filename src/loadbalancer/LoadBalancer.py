@@ -234,7 +234,7 @@ class LoadBalancer:
             request = [identity.encode("utf-8"), b"", b"", b"", json.dumps(cur_ring_msg).encode("utf-8")]
             self.backend.send_multipart(request)
             self.broadcast_message(identity, "JOIN_RING")
-        elif message['type'] == ServerMsgType.REPLY:
+        elif message['type'] == ServerMsgType.REPLY_GET or message['type'] == ServerMsgType.REPLY_POST or message['type'] == ServerMsgType.REPLY:
             request = [message['identity'].encode("utf-8"), b"", json.dumps(message).encode("utf-8")]
             self.frontend.send_multipart(request)
         elif message['type'] == "ACK":

@@ -206,12 +206,12 @@ class Server:
             if shopping_list is None:
                 self.send_message(self.socket, "Error couldn't find it", ServerMsgType.REPLY, identity)
             else:
-                self.send_message(self.socket, shopping_list, ServerMsgType.REPLY, identity)
+                self.send_message(self.socket, shopping_list, ServerMsgType.REPLY_GET, identity)
 
         elif message["type"] == ClientMsgType.POST:
             shopping_list = json.loads(message['body'])
             merged = self.persist_to_json(shopping_list, self.path)
-            self.send_message(self.socket, merged, ServerMsgType.REPLY, identity)
+            self.send_message(self.socket, merged, ServerMsgType.REPLY_POST, identity)
 
             value, neighbours = self.ring.get_server(shopping_list['uuid'])
             neighbours.insert(0, value)

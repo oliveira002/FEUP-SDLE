@@ -4,47 +4,167 @@ import { faTrash } from "@fortawesome/free-solid-svg-icons";
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { fetchShoppingLists, saveShoppingList } from "../utils";
 
-const allProducts = [
-  {
-    id: 1,
-    name: "bananas",
-  },
-  {
-    id: 2,
-    name: "cebolas",
-  },
-  {
-    id: 3,
-    name: "ovos",
-  },
-  {
-    id: 4,
-    name: "pão",
-  },
-  {
-    id: 5,
-    name: "maçãs",
-  },
- 
-  {
-    id: 6,
-    name: "leite",
-  },
+import { v4 as uuidv4 } from 'uuid';
 
-  {
-    id: 7,
-    name: "pão de forma",
-  },
-  {
-    id: 8,
-    name: "queijo",
-  },
- 
-];
+class GCounter {
+  constructor(counter) {
+      this.counter = counter
+  }
+
+  static zero() {
+      return new GCounter({})
+  }
+
+  value() {
+      return Object.values(this.counter).reduce((acc, currentValue) => acc + currentValue, 0);
+  }
+
+  inc(replica, value) {
+  
+      if(this.counter[replica] === undefined){
+
+        this.counter[replica] = 0;
+      }
+      this.counter[replica] += value;
+      
+     
+  }
+
+  static merge(a, b) {
+
+      let keys = Array.from(a.counter.keys()).concat(Array.from(b.counter.keys()))
+      const uniqueKeys = new Set(keys);
+
+      let mergedCounter = new Map()
+      for (const k of uniqueKeys) {
+          mergedCounter.set(k,
+              Math.max(
+                  (a.counter.get(k) ?? 0),
+                  (b.counter.get(k) ?? 0)
+              )
+          );
+      }
+      return new GCounter(mergedCounter);
+  }
+
+  toString() {
+    
+    let entries = []
+    Object.keys(this.counter).forEach(key => {
+      entries.push(`"${key}": ${this.counter[key]}`)
+    })
+
+    return `{ ${entries.join(', ')} }`;
+  }
+
+}
+
+
+
+class Shopping_List{
+  constructor(uuid=null) {
+      this.items = new Map()
+      this.uuid = uuidv4()
+      if(uuid !== null) {
+          this.uuid = uuid
+      }
+  }
+  static fromJson(json){
+    let sl = new Shopping_List()
+    sl.uuid = json["uuid"]
+  
+    let items = new Map()
+    Object.keys(json["items"]).forEach(key => {
+        let pos = new GCounter(json["items"][key]["pos"])
+        
+        let neg = new GCounter(json["items"][key]["neg"])
+
+        let pn = new PNCounter(pos, neg)
+        items.set(key, pn)
+    })
+  
+    sl.items = items
+    return sl
+  }
+
+  inc_or_add_item(item_name, quantity, replica){
+  
+      let item =  this.items.get(item_name) ?? PNCounter.zero()
+      item.inc(replica, quantity)
+      this.items.set(item_name, item)
+      console.log("inc_or_add_item", this)
+  }
+
+  dec_item(item_name, quantity, replica){
+      let item =  this.items.get(item_name) ?? PNCounter.zero()
+      item.dec(replica, quantity)
+      this.items.set(item_name, item)
+  }
+
+  static merge(a, b){
+      let items = Array.from(a.items.keys()).concat(Array.from(b.items.keys()))
+      const uniqueItems = new Set(items);
+
+      let mergedItems = new Map()
+      for (const item of uniqueItems) {
+          mergedItems.set(item,
+              PNCounter.merge(
+                  (a.items.get(item) ?? PNCounter.zero()),
+                  (b.items.get(item) ?? PNCounter.zero())
+              )
+          );
+      }
+
+      // Assuming a.uuid === b.uuid
+      let mergedSL = new Shopping_List(a.uuid)
+      mergedSL.items = mergedItems
+      return mergedSL
+  }
+
+  
+
+  toString(){
+      let items = Array.from(this.items.entries()).map(([key, value]) => `"${key}": {${value.toString()}}`);
+      return "{\"uuid\":\"" + this.uuid + "\", \"items\": {" + items + "}}"
+  }
+
+
+}
+
+class PNCounter{
+  constructor(pos, neg) {
+      this.pos = pos
+      this.neg = neg
+  }
+
+  static zero() {
+      return new PNCounter(GCounter.zero(), GCounter.zero())
+  }
+
+  value(){
+      return this.pos.value() - this.neg.value()
+  }
+
+  inc(replica, value){
+      this.pos.inc(replica, value)
+  }
+
+  dec(replica, value){
+      this.neg.inc(replica, value)
+  }
+  static merge(a, b){
+      return new PNCounter(GCounter.merge(a.pos, b.pos), GCounter.merge(a.neg, b.neg))
+  }
+
+  toString(){
+      return "\"pos\":" + this.pos.toString() + ", \"neg\":" + this.neg.toString()
+  }
+
+}
+
 
 const ShoppingList = () => {
-
-    
+    let shopping_list = new Shopping_List();
     const [products, setProducts] = useState([]);
     const [initialProducts, setInitialProducts] = useState([]);
     const [shoppingList, setShoppingList] = useState(null);
@@ -57,10 +177,9 @@ const ShoppingList = () => {
     const type = new URLSearchParams(location.search).get('type');
     const navigate = useNavigate();
     const [newItem, setNewItem] = useState('');
-    let currentURL = window.location.href;
-    console.log(currentURL);
-
-
+   
+    console.log("1",shoppingList)
+    
 
     const [userid, setUserid] = useState(null);
     const { ipcRenderer } = window.require('electron');
@@ -82,18 +201,31 @@ const ShoppingList = () => {
       };
   }, [userid]);
 
-    ipcRenderer.on('zmqMessage', (event, information) => {
-      console.log(information)    
+    ipcRenderer.on('zmqMessage', (event, information) => {  
+      if (information.type == "REPLY_POST"){ 
+        saveToLocal();
+        console.log("Received message from main process", information.body);
+        let shop_list = Shopping_List.fromJson(information.body);
+        console.log("shop_list",shop_list)
+        setShoppingList(shop_list);
+        let itemsArray = [];
+        shop_list.items.forEach((value, key) => {
+          itemsArray.push({
+            name: key,	
+            quantity: value.value(),
+          })
+            
+          
+        }
+        );
+     
+        setProducts(itemsArray);
+        setInitialProducts(itemsArray);
+        navigate(`/shopping-list/${id}?type=local`);
+        setServerMessage("Modified Shopping List Correctly");
 
-      if (information.type == "REPLY" && information.body === "Modified Shopping List Correctly"){ 
-        const example = {"uuid":"815bf169-4d4b-455f-a8b1-b9dadeaea9e3","items":{"bananas":{"quantity":3,"timestamps":{"1231-31-23123-12-33":2}},"cebolas":{"quantity":1,"timestamps":{"1231-31-23123-12-33":2}}}}
         
-        const itemsArray = Object.entries(example.items).map(([name, details]) => ({
         
-          name: name,
-          quantity: details.quantity,
-          timestamps: details.timestamps
-        }));
         /*if(itemsArray === products){
           setServerMessage("Modified Shopping List Correctly");
           navigate(`/shopping-list/${id}?type=local`);
@@ -104,13 +236,37 @@ const ShoppingList = () => {
           setInitialProducts(itemsArray);
           navigate(`/shopping-list/${id}?type=local`);
         }*/
-        setServerMessage("Modified Shopping List Correctly");
-        navigate(`/shopping-list/${id}?type=local`);
+        //setServerMessage("Modified Shopping List Correctly");
+        //navigate(`/shopping-list/${id}?type=local`);
 
         
       }
-      else if (information.type == "REPLY") {
-        setShoppingList(information.body)
+      else if (information.type == "REPLY_GET") {
+
+        console.log("Received message from main process", information.body);
+        let shop_list = Shopping_List.fromJson(information.body);
+        console.log("shop_list",shop_list)
+        setShoppingList(shop_list);
+        let itemsArray = [];
+        shop_list.items.forEach((value, key) => {
+          itemsArray.push({
+            name: key,	
+            quantity: value.value(),
+          })
+            
+          
+        }
+        );
+
+        setProducts(itemsArray);
+        setInitialProducts(itemsArray);
+        navigate(`/shopping-list/${id}?type=local`);
+
+     
+        
+        
+        
+        /*setShoppingList(information.body)
         const itemsArray = Object.entries(information.body.items).map(([name, details]) => ({
           name: name,
           quantity: details.quantity,
@@ -121,14 +277,14 @@ const ShoppingList = () => {
       setProducts(itemsArray);
       setInitialProducts(itemsArray);
       // Change remote to local
-      navigate(`/shopping-list/${id}?type=local`);
+      navigate(`/shopping-list/${id}?type=local`);*/
 
       
 
         
     }})
 
-    
+    console.log("1234",initialProducts)
     useEffect(() => {
       if(userid == null) return;
 
@@ -141,25 +297,52 @@ const ShoppingList = () => {
               const data = await fetchShoppingLists(userid);
               setShoppingLists(data);
               if(data){
+
+                let shop = data.ShoppingLists.find((list) => list.uuid === id);
                 
-                  data.ShoppingLists.map((shoppingList) => {
+                
+                  if(shop){
+                    let shop_list = Shopping_List.fromJson(shop);
+       
 
-                      if(shoppingList.uuid === id){
-                          setShoppingList(shoppingList);
+                      setShoppingList(shop_list);
+                      
+                      console.log("items", shop_list.items)
+                      let itemsArray = [];
+                      shop_list.items.forEach((value, key) => {
+                        itemsArray.push({
+                          name: key,	
+                          quantity: value.value(),
+                        })
                           
+                        
+                      });
+                      
+                      setProducts(itemsArray);
+                 
+                      setInitialProducts(itemsArray);    
+                      
+                  }
+                  else{
 
-                          const itemsArray = Object.entries(shoppingList.items).map(([name, details]) => ({
+                      // Create new shopping list
+                      let newShoppingList = new Shopping_List(id);
+                
+                      let itemsArray = [];
+                      newShoppingList.items.forEach((value, key) => {
+                        itemsArray.push({
+                          name: key,	
+                          quantity: value.value(),
+                        })
                           
-                            name: name,
-                            quantity: details.quantity,
-                            timestamps: details.timestamps
-                        }));
-
-                          setProducts(itemsArray);
-                          setInitialProducts(itemsArray);
-                          
-                      }
-                  })
+                        
+                      });
+                      setShoppingList(newShoppingList);
+                      setProducts(itemsArray);
+                      setInitialProducts(itemsArray);
+                      navigate(`/shopping-list/${id}?type=local`);
+                  }
+              
               }
              
           } catch (error) {
@@ -174,9 +357,11 @@ const ShoppingList = () => {
     
     // Function to update quantity
     const handleQuantityChange = (name, newQuantity) => {
+      newQuantity = parseInt(newQuantity);
+ 
       setProducts((prevProducts) =>
         prevProducts.map((product) =>
-          product.name === name ? { ...product, quantity: parseInt(newQuantity) } : product
+          product.name === name ? { ...product, quantity: newQuantity } : product
         )
       );
     };
@@ -191,6 +376,7 @@ const ShoppingList = () => {
   
 
   const handleAddCustomProduct = () => {
+  
     if (newItem.trim() !== '') {
       const productExists = products.find(
         (product) => product.name === newItem.trim()
@@ -200,9 +386,7 @@ const ShoppingList = () => {
         const newProduct = {
           name: newItem.trim(),
           quantity: 1,
-          timestamps: {
-            [userid]: 0,
-          },
+          
         };
         setProducts([...products, newProduct]);
         setNewItem(''); // Clear the input field after adding the item
@@ -215,8 +399,9 @@ const ShoppingList = () => {
             }
       }
     }
+    console.log("products123",initialProducts)
   };
-  console.log(products)
+
 
   const handleRemoveProduct = (name) => {
 
@@ -244,69 +429,70 @@ const ShoppingList = () => {
     );
     
     let new_items = []
+
     for (let i = 0; i < products.length; i++) {
       new_items.push({
         name: products[i].name,
         quantity: products[i].quantity,
-        timestamps: {
-          [userid]: Object.entries(products[i].timestamps)[0][1] + 1,
-        }
+       
       })
     }
       
    
     console.log(products)
     const saveToLocal = () => {
-      console.log("saving to local")
-      saveShoppingList(userid, id, { 
-        uuid: id,
-        items: products.reduce((acc, product) => {
-        const currentTimestamp = Object.entries(product.timestamps)[0][1];
-        let newid = Object.entries(product.timestamps)[0][0];
 
-        let updatedTimestamp;
-        if(initialProducts.find((prod) => prod.name === product.name )){
-          if(product.quantity !== initialProducts.find((prod) => prod.name === product.name).quantity){
-            updatedTimestamp = currentTimestamp + 1;
-            newid = userid
-          }
-          else{
-            updatedTimestamp = currentTimestamp;
-          }
-        
-        }
-        else{
-          updatedTimestamp = currentTimestamp + 1;
-        }
-        
 
-        acc[product.name] = {
-            quantity: product.quantity,
-            timestamps: {
-              [newid]: updatedTimestamp,
-            }
-        };
-        return acc;
-    }, {})});
+      console.log("initialProducts",initialProducts)
+      console.log("products",products)
+      products.forEach((product) => {
+        let initial_quantity = 0;
+        
+        try{
+          initial_quantity= initialProducts.find((prod) => prod.name === product.name).quantity
+        }
+        catch{
+          initial_quantity = 0;
+        }
+        let delta = parseInt(product.quantity - initial_quantity)
+  
+        if(product.quantity > initial_quantity){ 
+          console.log("delta positive",product.name)
+          console.log(shoppingList)
+          shoppingList.inc_or_add_item(product.name, Math.abs(delta), userid);
+        }
+        else if(product.quantity < initial_quantity){
+          console.log("delta negative",product.name)
+          shoppingList.dec_item(product.name, Math.abs(delta), userid);
+        }
+
+
+        
+        let items = {}
+        shoppingList.items.forEach((value, key) => {
+
+          
+          items[key] = {
+            pos: value.pos.counter,
+            neg: value.neg.counter
+          }});
+        console.log({"uuid":shoppingList.uuid, "items":items})
+        console.log(items)
+
+        saveShoppingList(userid, id, {
+          uuid: id,
+          items: items
+        }); 
+
+      }
+      )
   };
   const syncServer = () => {
     console.log("syncing to server")
-
-    const desiredFormat = new_items.reduce((acc, product) => {
-      const { name, quantity, timestamps } = product;
-      acc.items[name] = { quantity, timestamps };
-      return acc;    
-    }
-    , { uuid: id, items: {} });
-
-    
-    // Converter para JSON
-    const jsonFormat = JSON.stringify(desiredFormat);
-    
-    console.log(jsonFormat);
   
-  
-    ipcRenderer.send('frontMessage', {body: jsonFormat, type: "POST"});
+    console.log("sending",shoppingList.toString())
+
+    ipcRenderer.send('frontMessage', {body: shoppingList.toString(), type: "POST"});
     
   }
 
@@ -324,6 +510,7 @@ const ShoppingList = () => {
           onChange={(e) => setNewItem(e.target.value)}
         />
         <button
+          type='button'
           onClick={handleAddCustomProduct}
           className="btn btn-primary add-product"
         >
@@ -343,11 +530,11 @@ const ShoppingList = () => {
             <thead>
               <tr>
                 <th style={{ width: "15%" }}>Product</th>
-                <th style={{ width: "10%" }}>Quantity</th>
+                <th >Quantity</th>
               
-                <th>Version</th>
-                <th>Action</th>
-                <th>Last updated by</th>
+  
+                <th >Action</th>
+             
               </tr>
             </thead>
             <tbody>
@@ -375,9 +562,7 @@ const ShoppingList = () => {
                     />
                   </td>
                   
-                  <td className="version" data-th="" style={{ width: "10%" }}>
-                    {Object.entries(product.timestamps)[0][1]}
-                  </td>
+                  
                   <td className="actions" data-th="" style={{ width: "10%" }}>
                     
                         <button
@@ -387,9 +572,7 @@ const ShoppingList = () => {
                             <FontAwesomeIcon icon={faTrash} />
                         </button>
                   </td>
-                  <td  className="last-updated" data-th="">
-                    {Object.entries(product.timestamps)[0][0]}
-                  </td>
+                  
                  
                 </tr>
               ))}
@@ -402,11 +585,8 @@ const ShoppingList = () => {
                   </a>
                 </td>
        
-                <td colSpan="1" className="hidden-xs text-center" style={{ width: "10%" }}>
-                  <strong>Total: <span className="total">{calculateTotal()}</span></strong>
-                </td>
-                <td colSpan="1" className="hidden-xs text-center" style={{ width: "10%" }}>
-                </td>
+         
+            
                 <td>
                       <button onClick={saveToLocal} className="btn btn-success btn-block sync">
                             Local Save
@@ -433,4 +613,7 @@ const ShoppingList = () => {
   );
 };
 
+
 export default ShoppingList;
+
+

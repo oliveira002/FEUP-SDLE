@@ -10,6 +10,8 @@ sys.path.append(current_path)
 class ServerMsgType(str, Enum):
     CONNECT = "CONNECT"
     REPLY = "REPLY"
+    REPLY_GET = "REPLY_GET"
+    REPLY_POST = "REPLY_POST"
     HEARTBEAT = "HEARTBEAT"
     REPLICATE = "REPLICATE"
     ACK = "ACK"
